@@ -11,6 +11,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Mutex;
+use glob::glob;
+use gloo::console::log;
 
 mod loader;
 use loader::parse_project;
@@ -31,7 +33,6 @@ fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            show_save_dialog,
             get_project,
             write_to_file,
             write_to_json,
@@ -46,7 +47,7 @@ fn main() {
             open_explorer,
             create_empty_file,
             get_file_content,
-            list_files_in_directory,
+            list_statistic_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -81,31 +82,56 @@ fn open_explorer(path: String) {
     }
 }
 
+
 #[tauri::command]
-fn show_save_dialog(content: String) {
-    //REMAKE TO SAVE FILE IN CONTENT.MD !!!!!!!!!!!!!!!!!!!!
-    
+fn list_statistic_files() -> Result<Vec<String>, String> {
+    let mut path = get_data_dir();
+    path.push_str("/PaperSmith/");
+
+    let pattern = format!("{}/**/*", path);
+    let mut files = Vec::new(); // Vector to collect file names
+
+    match glob(&pattern) {
+        Ok(entries) => {
+            for entry in entries {
+                match entry {
+                    Ok(path) => {
+                        if let Some(file_name) = path.file_name() {
+                            let original_name = file_name.to_string_lossy();
+                            if let Some(formatted_name) = format_file_name(&original_name) {
+                                files.push(formatted_name); // Add to results
+                                
+                            } else {
+                                eprintln!("Unrecognized file name format: {}", original_name);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error reading entry: {}", e);
+                        return Err(format!("Error reading entry: {}", e));
+                    }
+                }
+            }
+        }
+        Err(e) => return Err(format!("Invalid glob pattern: {}", e)),
+    }
+
+    Ok(files)
 }
 
-#[tauri::command]
-fn list_files_in_directory(directory_path: String) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(directory_path);
-
-    // Check if the directory exists
-    if !path.is_dir() {
-        return Err("Provided path is not a valid directory.".to_string());
-    }
-
-    // Read the directory and collect the file names
-    match fs::read_dir(path) {
-        Ok(entries) => {
-            let files = entries.filter_map(|entry| {
-                entry.ok().and_then(|e| e.file_name().to_str().map(|s| s.to_string()))
-            }).collect::<Vec<String>>();
-            Ok(files)
+// Function to reformat file names
+fn format_file_name(file_name: &str) -> Option<String> {
+    if let Some(stripped) = file_name.strip_suffix(".json") {
+        // Split the timestamp into date and time
+        let parts: Vec<&str> = stripped.split('T').collect();
+        if parts.len() == 2 {
+            let date = parts[0];
+            let time = parts[1].replace("-", ":");
+            // Format the date and time with "date: ... , time: ..."
+            return Some(format!("{} {}", date, time));
         }
-        Err(_) => Err("Failed to read the directory.".to_string()),
     }
+    None // Return None if the file name doesn't match the expected format
 }
 
 #[tauri::command]
@@ -193,14 +219,15 @@ fn write_to_file(path: &str, content: &str) {
         }
     }
 
-    // Open the file in append mode or create it if it doesn't exist
-    let mut file = match OpenOptions::new().append(true).create(true).open(path) {
+    let mut file = match OpenOptions::new().write(true).truncate(true).create(true).open(path) {
         Ok(f) => f,
         Err(e) => {
             eprintln!("Failed to open or create the file: {e:?}");
             return;
         }
     };
+
+    println!("{:?}", content.clone());
 
     // Write the content to the file
     match write!(file, "{content}") {
