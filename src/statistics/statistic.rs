@@ -147,6 +147,7 @@ pub fn StatisticWindow(
 ) -> Html {
     let files = use_state(|| vec![]);
     let selected_file = use_state(|| String::new());
+    let formatted_file = use_state(|| String::new());
 
     {
         let files = files.clone();
@@ -175,6 +176,11 @@ pub fn StatisticWindow(
             })
             .collect()
     }
+    
+
+    
+
+    
 
     html! {
         <>

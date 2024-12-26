@@ -89,7 +89,7 @@ fn list_statistic_files() -> Result<Vec<String>, String> {
     path.push_str("/PaperSmith/");
 
     let pattern = format!("{}/**/*", path);
-    let mut files = Vec::new(); // Vector to collect file names
+    let mut files = Vec::new();
 
     match glob(&pattern) {
         Ok(entries) => {
@@ -99,7 +99,7 @@ fn list_statistic_files() -> Result<Vec<String>, String> {
                         if let Some(file_name) = path.file_name() {
                             let original_name = file_name.to_string_lossy();
                             if let Some(formatted_name) = format_file_name(&original_name) {
-                                files.push(formatted_name); // Add to results
+                                files.push(formatted_name);
                                 
                             } else {
                                 eprintln!("Unrecognized file name format: {}", original_name);
@@ -119,20 +119,29 @@ fn list_statistic_files() -> Result<Vec<String>, String> {
     Ok(files)
 }
 
-// Function to reformat file names
 fn format_file_name(file_name: &str) -> Option<String> {
     if let Some(stripped) = file_name.strip_suffix(".json") {
-        // Split the timestamp into date and time
         let parts: Vec<&str> = stripped.split('T').collect();
         if parts.len() == 2 {
             let date = parts[0];
             let time = parts[1].replace("-", ":");
-            // Format the date and time with "date: ... , time: ..."
             return Some(format!("{} {}", date, time));
         }
     }
-    None // Return None if the file name doesn't match the expected format
+    None
 }
+
+#[tauri::command]
+fn unformat_file_name(formatted_name: &str) -> Option<String> {
+    let parts: Vec<&str> = formatted_name.split(' ').collect();
+    if parts.len() == 2 {
+        let date = parts[0];
+        let time = parts[1].replace(":", "-");
+        return Some(format!("{}T{}.json", date, time));
+    }
+    None
+}
+
 
 #[tauri::command]
 fn get_project() -> Option<Project> {
