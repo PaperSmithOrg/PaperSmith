@@ -100,7 +100,7 @@ pub fn app() -> Html {
     let text_input_ref = use_node_ref();
     let pages_ref = use_node_ref();
 
-    let save = {
+    let save_fn = {
         let text_input_ref = text_input_ref.clone();
         let project_path = project_path.clone();
         let modal = modal.clone();
@@ -157,6 +157,18 @@ pub fn app() -> Html {
             });
         })
     };
+
+    let save = {
+        let save_fn = save_fn.clone();
+        Callback::from(move |_| save_fn.emit(()))
+    };
+
+    {
+        let save = save_fn.clone();
+        use_interval(move || {
+            save.emit(());
+        }, 300_000); // 300,000 ms = 5 minutes
+    }
 
     let open_modal = {
         let modal = modal.clone();
