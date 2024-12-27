@@ -51,7 +51,7 @@ use modal::Modal;
 
 #[path = "settings-menu/settings.rs"]
 mod settings;
-use settings::Settings;
+use settings::SettingsMenu;
 
 #[wasm_bindgen]
 extern "C" {
@@ -129,7 +129,7 @@ pub fn app() -> Html {
             modal.set(html! {
                 <Modal
                     content={html! {
-                    <Settings
+                    <SettingsMenu
                         closing_callback={
                             let modal = modal.clone();
                             Callback::from(move |_| modal.set(html!()))

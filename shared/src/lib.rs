@@ -1,6 +1,28 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::fmt::{self};
 use std::path::PathBuf;
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+pub struct Settings {
+    pub theme: String,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Settings {
+            theme: String::from("light"),
+        }
+    }
+}
+
+impl fmt::Display for Settings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Settings:")?;
+        writeln!(f, "Theme: {:?}", self.theme)?;
+
+        Ok(())
+    }
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Project {

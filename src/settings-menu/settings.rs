@@ -1,3 +1,5 @@
+use std::{future::Future, process::Output};
+
 use gloo::utils::document;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -5,6 +7,8 @@ use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlDocument;
 use yew::prelude::*;
+
+use shared::Settings;
 
 use crate::app::invoke;
 
@@ -24,7 +28,7 @@ pub struct FileWriteData {
     pub content: String,
 }
 
-#[function_component(Settings)]
+#[function_component(SettingsMenu)]
 pub fn settings_menu(
     SettingsProps {
         closing_callback: on_close,
@@ -40,7 +44,6 @@ pub fn settings_menu(
 
         Callback::from(move |_| {
             let theme = theme.clone();
-            gloo_console::log!("button pressed");
 
             switch_theme(theme.clone());
 

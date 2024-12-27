@@ -5,6 +5,7 @@ use rfd::FileDialog;
 use saving::create_empty_file;
 use std::fs;
 use std::fs::File;
+use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
@@ -23,6 +24,7 @@ use saving::delete_path;
 use saving::rename_path;
 
 use shared::Project;
+use shared::Settings;
 
 fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
@@ -43,6 +45,7 @@ fn main() {
             open_explorer,
             create_empty_file,
             get_file_content,
+            get_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -140,6 +143,31 @@ fn write_to_json(path: &str, name: &str, content: &str) {
     //     Ok(_) => println!("Wrote in file: {:?}", file_path),
     //     Err(e) => eprintln!("Error when writing in file: {:?}", e),
     // }
+}
+
+#[tauri::command]
+fn get_settings(path: &str, name: &str) -> Option<Settings> {
+    let file_name = format!("{name}.json");
+    let file_path = format!("{path}/{file_name}");
+
+    let file = File::open(&file_path);
+
+    match file {
+        Ok(mut x) => {
+            let mut content = String::new();
+            let _ = x.read_to_string(&mut content);
+
+            let json_content: Settings = serde_json::from_str(&content).expect("JSON was not well-formatted");
+            
+            Some(json_content)
+        },
+        Err(e) => {
+            eprint!("{e}");
+            let settings = Settings::default();
+
+            Some(settings)
+        } 
+    }
 }
 
 #[tauri::command]

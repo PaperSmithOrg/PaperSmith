@@ -1,8 +1,5 @@
-use gloo::utils::document;
-use wasm_bindgen::JsCast;
-use web_sys::{HtmlDocument, HtmlSelectElement};
+use web_sys::HtmlSelectElement;
 use yew::prelude::*;
-use yew_icons::{Icon, IconId};
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
@@ -13,9 +10,6 @@ pub struct Props {
 pub fn switcher(    Props {
     theme,
 }: &Props,) -> Html {
-    let dropdown_content = use_state(|| html!());
-    let is_open = use_state(|| false);
-
     let theme = theme;
 
     let switch_ref = use_node_ref();
