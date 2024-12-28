@@ -176,11 +176,6 @@ pub fn StatisticWindow(
             })
             .collect()
     }
-    
-
-    
-
-    
 
     html! {
         <>
