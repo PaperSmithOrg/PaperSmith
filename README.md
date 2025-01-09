@@ -35,10 +35,10 @@ Features that are either already finished, are in progress or are planned for fu
 - [x] Statistics
 - [x] Project creation wizard
 - [x] Markdown Formatting
+- [x] Autosaving
 
 #### Planned
 
-- [ ] Autosaving
 - [ ] Automatic Backups
 - [ ] Settings menu
 - [ ] Export options
