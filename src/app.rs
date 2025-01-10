@@ -63,6 +63,7 @@ use wizard::ProjectWizard;
 #[path = "modal-system/modal.rs"]
 mod modal;
 use modal::Modal;
+use modal::VerticalModal;
 
 #[wasm_bindgen]
 extern "C" {
@@ -195,7 +196,7 @@ pub fn app() -> Html {
         let pages_ref = pages_ref.clone();
         Callback::from(move |_| {
             modal.set(html! {
-                <Modal
+                <VerticalModal
                     content={html! {
                         <StatisticWindow
                             closing_callback={
@@ -288,9 +289,10 @@ pub fn app() -> Html {
                         }
                         pages_ref={pages_ref.clone()}
                     />
-                    <Button callback={open_statistics} icon={IconId::LucideFilePlus} title="Statistics" size=1.5 />
                 </div>
-                <div class="bottombar-right" />
+                <div class="bottombar-right">
+                <Button callback={open_statistics} icon={IconId::LucideBarChart3} title="Statistics" size=1.5/>
+                </div>
             </div>
         </div>
     }

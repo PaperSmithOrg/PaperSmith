@@ -179,30 +179,33 @@ pub fn StatisticWindow(
 
     html! {
         <>
-            <div id="footer" class="flex justify-end w-full pt-8">
-                <button
-                    onclick={on_close}
-                    class="rounded-lg text-lg px-2 py-1 ml-4 bg-secondary text-crust hover:scale-105 border-0"
-                >
-                    { "Close" }
-                </button>
-            </div>
-
-            <div class="file-dropdown">
-                <label for="file-select">{"Select a file"}</label>
-                <select
-                    id="file-select"
-                    onchange={Callback::from(move |e: Event| {
-                        let target = e.target_dyn_into::<web_sys::HtmlSelectElement>().unwrap();
-                        selected_file.set(target.value());
-                    })}
-                >
-                    <option value="">{"-- Select --"}</option>
-                    {
-                        files_to_html((*files).clone())
-                    }
-                </select>
+            <div class="absolute top-0 left-0 z-50 bg-black/60 h-full w-full flex items-center justify-center text-text">
+                <div class="bg-base rounded-lg max-w-[50%] min-w-[50%] max-h-[70%] min-h-[70%] p-8 flex flex-col justify-between">
+                    <div>
+                        <label for="file-select" class="block text-white-700 font-medium mb-2">{"Select a file"}</label>
+                        <select
+                            id="file-select"
+                            class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
+                            onchange={Callback::from(move |e: Event| {
+                                let target = e.target_dyn_into::<web_sys::HtmlSelectElement>().unwrap();
+                                selected_file.set(target.value());
+                            })}
+                        >
+                            <option value="">{"-- Select --"}</option>
+                            {
+                                files_to_html((*files).clone())
+                            }
+                        </select>
+                    </div>
+    
+                    <button
+                        onclick={on_close}
+                        class="rounded-lg text-lg px-2 py-1 bg-secondary text-crust hover:scale-105 border-0 transition-transform self-end"
+                    >
+                        { "Close" }
+                    </button>
+                </div>
             </div>
         </>
     }
-}
+}    
