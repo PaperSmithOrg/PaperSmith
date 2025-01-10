@@ -1,5 +1,6 @@
 use pulldown_cmark::{html::push_html, Options, Parser};
 use web_sys::HtmlElement;
+use regex::Regex;
 use yew::prelude::*;
 
 #[path = "zoom_handlers.rs"]
@@ -77,9 +78,14 @@ fn text_input_handler(text_input_ref: NodeRef, render_ref: NodeRef) -> Callback<
         }
     })
 }
+
 // ad br tag after end of each line (make it one string)
 fn rendering_handler(render_ref: &NodeRef, new_lines: &[String]) {
     let mut last_was_empty = false;
+
+    let mark_regex = Regex::new(r"::(.*?)::").unwrap();
+    let underline_regex = Regex::new(r"__(.*?)__").unwrap();
+    let image_regex = Regex::new(r"!\(\s*(.*?)\s*\)").unwrap();
 
     let html_strings: Vec<String> = new_lines
         .iter()
@@ -98,7 +104,12 @@ fn rendering_handler(render_ref: &NodeRef, new_lines: &[String]) {
                 }
             } else {
                 last_was_empty = false;
-                let parser = Parser::new_ext(line.as_str(), options);
+
+                let line_with_mark = mark_regex.replace_all(line, r#"<mark>$1</mark>"#);
+                let line_with_underline = underline_regex.replace_all(&line_with_mark, r#"<u>$1</u>"#);
+                let line_with_image = image_regex.replace_all(&line_with_underline, r#"<img src="$1"/>"#);
+
+                let parser = Parser::new_ext(line_with_image.as_ref(), options);
                 let mut html_output = String::new();
                 push_html(&mut html_output, parser);
                 html_output

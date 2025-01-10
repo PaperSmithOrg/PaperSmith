@@ -13,13 +13,10 @@ pub fn toolbar() -> Html {
 
 fn render_toolbar() -> Html {
     html! {
-        <ul class="toolbar-menu ">
+        <ul class="toolbar-menu p-0 m-0 flex text-[12px] list-none">
             { render_submenu("Project", vec![
                 toolbar_item("New", "CTRL+N"),
                 toolbar_item("Open...", "CTRL+O"),
-                /*render_submenu("Recent Projects", vec![
-                    toolbar_item("Nothing", "").disabled(true)
-                ]),*/
                 toolbar_item("Save", "CTRL+S"),
                 toolbar_item("Save As...", "CTRL+SHIFT+S"),
                 toolbar_item("Save a Copy As...", ""),
@@ -35,7 +32,6 @@ fn render_toolbar() -> Html {
                 toolbar_item("Paste", "CTRL+V"),
                 toolbar_item("Select All", "CTRL+A"),
                 toolbar_item("Find and Replace", "CTRL+F"),
-                //toolbar_item("Jump to Word Count", "CTRL+J"),
             ]) }
             { render_submenu("Format", vec![
                 toolbar_item("Italic", "CTRL+I"),
@@ -64,19 +60,23 @@ fn render_toolbar() -> Html {
 
 fn render_submenu(name: &str, items: Vec<Html>) -> Html {
     html! {
-        <li class="toolbar-submenu">
-            <span>{ name }</span>
-            <ul class="toolbar-submenu-items bg-crust">{ for items }</ul>
+        <li class="toolbar-submenu relative group">
+            <span class="cursor-pointer px-2 py-1 m-0 inline-block transition-colors duration-300 select-none rounded-[5px] hover:bg-overlay0 hover:rounded-[5px]">
+                { name }
+            </span>
+            <ul class="bg-crust hidden absolute group-hover:block top-full left-0 list-none p-2 m-0 z-10 min-w-[200px] shadow-md rounded-[8px]">
+                { for items }
+            </ul>
         </li>
     }
 }
 
 fn toolbar_item(name: &str, shortcut: &str) -> Html {
     html! {
-        <li class="toolbar-item hover:text-subtext">
+        <li class="toolbar-item hover:text-subtext cursor-pointer py-[1px] px-[0.5rem] m-0 flex justify-between items-center select-none rounded-[5px] transition-colors duration-300 hover:rounded-[5px]">
             <span>{ name }</span>
             if !shortcut.is_empty() {
-                <span class="toolbar-shortcut text-subtext">{ shortcut }</span>
+                <span class="toolbar-shortcut text-subtext ml-auto text-[12px]">{ shortcut }</span>
             }
         </li>
     }

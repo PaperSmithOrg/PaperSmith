@@ -28,7 +28,7 @@ pub fn switcher() -> Html {
             }
 
             dropdown_content.set(html! {
-                <div class="text-lg">
+                <div class="text-lg select-none">
                     { themes.iter().map(|theme| {
                         let theme_clone = theme.clone();
                     let switch_theme_callback = Callback::from(move |_| {
