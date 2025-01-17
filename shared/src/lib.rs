@@ -10,7 +10,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
-            theme: String::from("light"),
+            theme: String::from("Light"),
         }
     }
 }

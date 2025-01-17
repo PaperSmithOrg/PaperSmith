@@ -125,8 +125,6 @@ async fn show_save_dialog() {
 
 #[tauri::command]
 fn write_to_json(path: &str, name: &str, content: &str) {
-    // let start_time = *START_TIME.lock().unwrap();
-    // let formatted_time = start_time.format("%Y-%m-%dT%H-%M-%S").to_string();
     let file_name = format!("{name}.json");
     let file_path = format!("{path}/{file_name}");
 
@@ -139,16 +137,11 @@ fn write_to_json(path: &str, name: &str, content: &str) {
     };
 
     let _result = write!(file, "{content}");
-    // match result {
-    //     Ok(_) => println!("Wrote in file: {:?}", file_path),
-    //     Err(e) => eprintln!("Error when writing in file: {:?}", e),
-    // }
 }
 
 #[tauri::command]
-fn get_settings(path: &str, name: &str) -> Option<Settings> {
-    let file_name = format!("{name}.json");
-    let file_path = format!("{path}/{file_name}");
+fn get_settings(path: &str) -> Option<Settings> {
+    let file_path = format!("{path}/settings.json");
 
     let file = File::open(&file_path);
 
@@ -157,16 +150,19 @@ fn get_settings(path: &str, name: &str) -> Option<Settings> {
             let mut content = String::new();
             let _ = x.read_to_string(&mut content);
 
-            let json_content: Settings = serde_json::from_str(&content).expect("JSON was not well-formatted");
-            
+            let json_content: Settings =
+                serde_json::from_str(&content).expect("JSON was not well-formatted");
+
+            println!("{}", json_content.theme);
+
             Some(json_content)
-        },
+        }
         Err(e) => {
             eprint!("{e}");
             let settings = Settings::default();
 
             Some(settings)
-        } 
+        }
     }
 }
 

@@ -1,20 +1,17 @@
-use std::{future::Future, process::Output};
-
 use gloo::utils::document;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlDocument;
+use web_sys::HtmlSelectElement;
 use yew::prelude::*;
-
-use shared::Settings;
 
 use crate::app::invoke;
 
-#[path = "switcher.rs"]
-mod switcher;
-use switcher::ThemeSwitcher;
+// #[path = "switcher.rs"]
+// mod switcher;
+// use switcher::ThemeSwitcher;
 
 #[derive(Properties, PartialEq)]
 pub struct SettingsProps {
@@ -36,7 +33,7 @@ pub fn settings_menu(
 ) -> Html {
     let confirm_button_ref = use_node_ref();
 
-    let theme = use_state_eq(|| String::from("Light"));
+    let theme = use_state(|| String::from("Light"));
 
     let on_confirm = {
         let on_close = on_close.clone();
@@ -45,9 +42,10 @@ pub fn settings_menu(
         Callback::from(move |_| {
             let theme = theme.clone();
 
-            switch_theme(theme.clone());
+            gloo_console::log!(format!("theme should be: {}", *theme.clone()));
 
             spawn_local(async move {
+                switch_theme(theme.clone());
                 write_changes(theme).await;
             });
 
@@ -55,23 +53,49 @@ pub fn settings_menu(
         })
     };
 
+    let switch_ref = use_node_ref();
+
+    let themes = [
+        "Light".to_string(),
+        "Light Dark".to_string(),
+        "Medium".to_string(),
+        "Dark".to_string(),
+        "Very Dark".to_string(),
+    ];
+
+    let onchange = {
+        let select_ref = switch_ref.clone();
+        let theme = theme.clone();
+
+        Callback::from(move |_| {
+            let select = select_ref.cast::<HtmlSelectElement>();
+            let theme = theme.clone();
+
+            if let Some(select) = select {
+                theme.set(select.value());
+            }
+        })
+    };
+
+    let themes_vec = themes_to_html(Vec::from(themes.clone()));
+
     html!(
         <>
             <div class="text-xl font-bold">{ "Settings" }</div>
             <br />
-            // <div id="font_size_change" class="flex w-full pt-8 justify-between">
-            //     <div class="font-semibold self-center">{ "Font Size" }</div>
-            //     <div class="rounded-lg border-transparent hover:border-mauve">
-            //         <input
-            //             oninput={on_font_size_input}
-            //             class="outline-none bg-crust p-2 rounded-lg border-2 border-transparent"
-            //             ref={input_font_size_ref}
-            //         />
-            //     </div>
-            // </div>
             <div id="theme_change" class="flex w-full pt-8 justify-between">
                 <div class="font-bold self-center">{"Theme"}</div>
-                <ThemeSwitcher theme={theme}/>
+                // <ThemeSwitcher theme={theme}/>
+                <div>
+                <div>
+                    <select ref={switch_ref}
+                            onchange={onchange}
+                            class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
+                    >
+                        { themes_vec }
+                    </select>
+                </div>
+            </div>
             </div>
             <div class="flex justify-end w-full pt-8">
                 <button
@@ -92,29 +116,19 @@ pub fn settings_menu(
     )
 }
 
-// fn field_input_handler(value: UseStateHandle<String>) -> Callback<InputEvent> {
-//     Callback::from(move |ev: InputEvent| {
-//         if let Some(input) = ev.target_dyn_into::<HtmlInputElement>() {
-//             let text = input.value();
-
-//             match text.clone().parse::<u32>() {
-//                 Ok(n) => {
-//                     gloo_console::log!(format!("text is {:?}", n));
-//                     let _ = input.style().set_property("border-color", "transparent");
-//                     value.set(text)
-//                 }
-//                 Err(err) => {
-//                     gloo_console::log!(format!(
-//                         "could not convert '{}' to number: {:?}",
-//                         text, err
-//                     ));
-
-//                     let _ = input.style().set_property("border-color", "red");
-//                 }
-//             }
-//         }
-//     })
-// }
+fn themes_to_html(themes: Vec<String>) -> Html {
+    themes
+        .iter()
+        .map(|theme| {
+            html! {
+                <option value={theme.clone()}
+                >
+                { theme }
+                </option>
+            }
+        })
+        .collect()
+}
 
 async fn write_changes(theme: UseStateHandle<String>) {
     let content = json!({
@@ -128,7 +142,7 @@ async fn write_changes(theme: UseStateHandle<String>) {
 
     let mut path = path_jsvalue.as_string().expect("Cast failed").clone();
 
-    path.push_str("/PaperSmith/");
+    path.push_str("/PaperSmith");
 
     gloo_console::log!(path.clone());
 
@@ -148,8 +162,7 @@ async fn write_changes(theme: UseStateHandle<String>) {
 fn switch_theme(theme: UseStateHandle<String>) {
     let html_doc: HtmlDocument = document().dyn_into().unwrap();
     let body = html_doc.body().unwrap();
-    let theme = String::from(theme.clone().as_str());
-    gloo_console::log!(theme.clone());
-    let theme2 = theme.to_string().to_lowercase().replace(' ', "");
+    let theme = theme.as_str();
+    let theme2 = theme.to_lowercase().replace(' ', "");
     body.set_class_name(format!("{theme2} bg-crust text-text").as_str());
 }

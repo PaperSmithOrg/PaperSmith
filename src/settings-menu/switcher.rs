@@ -3,14 +3,12 @@ use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
-    pub theme: UseStateHandle<String>,
+    pub theme: String,
 }
 
 #[function_component(ThemeSwitcher)]
-pub fn switcher(    Props {
-    theme,
-}: &Props,) -> Html {
-    let theme = theme;
+pub fn switcher(Props { theme }: &Props) -> Html {
+    let theme = theme.clone();
 
     let switch_ref = use_node_ref();
 
@@ -28,10 +26,10 @@ pub fn switcher(    Props {
 
         Callback::from(move |_| {
             let select = select_ref.cast::<HtmlSelectElement>();
+            let mut theme = theme.clone();
 
             if let Some(select) = select {
-                theme.set(select.value());
-                // switch_theme(theme.to_string().to_lowercase().replace(' ', ""));
+                theme = select.value();
             }
         })
     };
@@ -52,13 +50,6 @@ pub fn switcher(    Props {
     }
 }
 
-// fn switch_theme(theme: String) {
-//     let html_doc: HtmlDocument = document().dyn_into().unwrap();
-//     let body = html_doc.body().unwrap();
-//     gloo_console::log!(theme.clone());
-//     body.set_class_name(format!("{theme} bg-crust text-text").as_str());
-// }
-
 fn themes_to_html(themes: Vec<String>) -> Html {
     themes
         .iter()
@@ -72,4 +63,44 @@ fn themes_to_html(themes: Vec<String>) -> Html {
             }
         })
         .collect()
+}
+
+async fn write_changes(theme: String) {
+    gloo_console::log!(format!("theme to write: {}", theme));
+
+    let content = json!({
+        "theme": theme,
+    })
+    .to_string();
+
+    let name = String::from("settings");
+
+    let path_jsvalue = invoke("get_data_dir", JsValue::null()).await;
+
+    let mut path = path_jsvalue.as_string().expect("Cast failed").clone();
+
+    path.push_str("/PaperSmith");
+
+    gloo_console::log!(path.clone());
+
+    let settings = FileWriteData {
+        path,
+        name,
+        content,
+    };
+
+    invoke(
+        "write_to_json",
+        serde_wasm_bindgen::to_value(&settings).unwrap(),
+    )
+    .await;
+}
+
+fn switch_theme(theme: String) {
+    gloo_console::log!(format!("new theme: {}", theme));
+
+    let html_doc: HtmlDocument = document().dyn_into().unwrap();
+    let body = html_doc.body().unwrap();
+    let theme2 = theme.to_lowercase().replace(' ', "");
+    body.set_class_name(format!("{theme2} bg-crust text-text").as_str());
 }

@@ -1,4 +1,5 @@
 use gloo::utils::document;
+use gloo_timers::callback::Timeout;
 use serde::Serialize;
 use serde_wasm_bindgen::to_value;
 use sidebar::buttons::Button;
@@ -11,6 +12,10 @@ use web_sys::HtmlElement;
 use yew::events::MouseEvent;
 use yew::prelude::*;
 use yew_icons::IconId;
+
+use shared::Settings;
+
+// use settings::switch_theme;
 
 #[path = "notepad/notepad.rs"]
 mod notepad;
@@ -65,6 +70,11 @@ struct SaveFileArgs {
     filename: String,
 }
 
+#[derive(Serialize)]
+pub struct PathArgs {
+    pub path: String,
+}
+
 #[function_component(App)]
 pub fn app() -> Html {
     let project: UseStateHandle<Option<Project>> = use_state(|| None);
@@ -78,6 +88,12 @@ pub fn app() -> Html {
     let modal = use_state(|| html!());
     let text_input_ref = use_node_ref();
     let pages_ref = use_node_ref();
+    
+    {
+        use_effect_with((), move |_| {
+            apply_settings();
+        });
+    }
 
     let save = {
         let text_input_ref = text_input_ref.clone();
@@ -123,7 +139,7 @@ pub fn app() -> Html {
         })
     };
 
-    let open_settings:Callback<MouseEvent> = {
+    let open_settings: Callback<MouseEvent> = {
         let modal = modal.clone();
         Callback::from(move |_| {
             modal.set(html! {
@@ -227,6 +243,44 @@ pub fn app() -> Html {
             </div>
         </div>
     }
+}
+
+fn apply_settings() {
+    spawn_local(async move {
+        let path_jsvalue = invoke("get_data_dir", JsValue::NULL).await;
+
+        let mut path = path_jsvalue.as_string().expect("Cast failed").clone();
+
+        path.push_str("/PaperSmith");
+
+        let settings_jsvalue = invoke(
+            "get_settings",
+            serde_wasm_bindgen::to_value(&PathArgs { path: path }).unwrap(),
+        )
+        .await;
+
+        let settings_result = serde_wasm_bindgen::from_value::<Settings>(settings_jsvalue);
+
+        let settings = settings_result.unwrap();
+
+        let theme = settings.theme;
+
+        let _ = Timeout::new(10, {
+            let theme = theme.clone();
+
+            move || {
+                switch_theme(theme);
+            }
+        })
+        .forget();
+    });
+}
+
+fn switch_theme(theme: String) {
+    let html_doc: HtmlDocument = document().dyn_into().unwrap();
+    let body = html_doc.body().unwrap();
+    let theme2 = theme.to_lowercase().replace(' ', "");
+    body.set_class_name(format!("{theme2} bg-crust text-text").as_str());
 }
 
 /*let save = Callback::from(move |_: MouseEvent| {
