@@ -48,6 +48,7 @@ fn main() {
             create_empty_file,
             get_file_content,
             list_statistic_files,
+            unformat_file_name,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

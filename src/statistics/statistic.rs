@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 
 use chrono::prelude::*;
+use gloo_timers::callback::Timeout;
 use js_sys::Array;
 use serde_json::json;
 use serde_wasm_bindgen::from_value;
@@ -30,6 +31,11 @@ pub struct CharCountProps {
 pub struct FileWriteData {
     pub path: String,
     pub content: String,
+}
+
+#[derive(Serialize)]
+pub struct PathArgs {
+    pub file_name: String,
 }
 
 // #[derive(Properties, PartialEq)]
@@ -148,21 +154,97 @@ pub fn StatisticWindow(
     let files = use_state(|| vec![]);
     let selected_file = use_state(|| String::new());
     let formatted_file = use_state(|| String::new());
+    let select_ref = use_node_ref();
 
+    let onchange = {
+        let select_ref = select_ref.clone();
+        let selected_file = selected_file.clone();
+
+        Callback::from(move |_| {
+            let select_ref = select_ref.clone();
+            let selected_file = selected_file.clone();
+
+            let _ = Timeout::new(10, {
+                move || {
+                    let select = select_ref.cast::<HtmlSelectElement>();
+
+                    if let Some(select) = select {
+                        let selected_file = selected_file.clone();
+
+                        {
+                            let selected_file = selected_file.clone();
+                            spawn_local(async move {
+                                let selected_file = selected_file.clone();
+                                let selected_file_name = selected_file.as_str();
+
+                                let file_name = serde_wasm_bindgen::to_value(&PathArgs {
+                                    file_name: String::from(selected_file_name),
+                                }).unwrap();
+
+                                gloo_console::log!(format!("{}", selected_file_name));
+
+                                let file_name_jsvalue = invoke(
+                                    "unformat_file_name",
+                                    file_name,
+                                )
+                                .await;
+
+                                let file_name = serde_wasm_bindgen::from_value::<Option<String>>(
+                                    file_name_jsvalue,
+                                )
+                                .unwrap()
+                                .unwrap();
+                                gloo_console::log!(format!("{}", file_name));
+                            });
+                        }
+
+                        selected_file.set(select.value());
+
+                        //gloo_console::log!(format!("{}", select.value()));
+                    }
+                }
+            })
+            .forget();
+        })
+    };
+    // {
+    //     let select_ref = select_ref.clone();
+    //     use_interval(
+    //         move || {
+    //             let select_ref = select_ref.clone();
+
+    //             {
+    //                 spawn_local(async move {
+    //                     let select_ref = select_ref.clone();
+    //                     let select = select_ref.cast::<HtmlSelectElement>();
+
+    //                     if let Some(select) = select {
+    //                         gloo_console::log!(format!("{}", select.value()))
+    //                     }
+    //                 })
+    //             }
+    //         },
+    //         100,
+    //     );
+    // }
     {
         let files = files.clone();
-        use_interval(move || {
-            let files = files.clone();
+        use_interval(
+            move || {
+                let files = files.clone();
 
-            {
-            spawn_local(async move {
-            let file_list = invoke("list_statistic_files", JsValue::NULL).await;
-            let file_list: Vec<String> = from_value(file_list).unwrap();
-    
-            files.set(file_list);
-    
-        })}}, 1000);
-        }
+                {
+                    spawn_local(async move {
+                        let file_list = invoke("list_statistic_files", JsValue::NULL).await;
+                        let file_list: Vec<String> = from_value(file_list).unwrap();
+
+                        files.set(file_list);
+                    })
+                }
+            },
+            1000,
+        );
+    }
 
     fn files_to_html(files: Vec<String>) -> Html {
         files
@@ -184,12 +266,9 @@ pub fn StatisticWindow(
                     <div>
                         <label for="file-select" class="block text-white-700 font-medium mb-2">{"Select a file"}</label>
                         <select
-                            id="file-select"
+                            ref={select_ref}
                             class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
-                            onchange={Callback::from(move |e: Event| {
-                                let target = e.target_dyn_into::<web_sys::HtmlSelectElement>().unwrap();
-                                selected_file.set(target.value());
-                            })}
+                            onchange={onchange}
                         >
                             <option value="">{"-- Select --"}</option>
                             {
@@ -197,7 +276,7 @@ pub fn StatisticWindow(
                             }
                         </select>
                     </div>
-    
+
                     <button
                         onclick={on_close}
                         class="rounded-lg text-lg px-2 py-1 bg-secondary text-crust hover:scale-105 border-0 transition-transform self-end"
@@ -208,4 +287,4 @@ pub fn StatisticWindow(
             </div>
         </>
     }
-}    
+}
