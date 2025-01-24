@@ -313,7 +313,7 @@ pub fn StatisticWindow(
                 <label for="file-select" class="block text-text font-medium mb-2">{"Select a file"}</label>
                 <select
                     ref={select_ref}
-                    class="bg-primary rounded-lg text-text focus:ring-accent border border-primary p-2 w-full"
+                    class="bg-primary rounded-lg text-black focus:ring-accent border border-primary p-2 w-full"
                     onchange={onchange}
                 >
                     {
@@ -337,7 +337,7 @@ pub fn StatisticWindow(
 
                     <button
                     onclick={on_close}
-                    class="rounded-lg text-lg px-4 py-2 bg-secondary text-crust hover:bg-accent hover:scale-105 border-0 transition-transform self-end shadow-md"
+                    class="rounded-lg text-lg px-3 py-1 bg-secondary text-crust hover:bg-accent hover:scale-105 border-0 transition-transform self-end shadow-md"
                 >
                     { "Close" }
                    </button>
