@@ -262,7 +262,7 @@ fn write_to_file(path: &str, content: &str) {
         }
     };
 
-    println!("{:?}", content.clone());
+    println!("{:?}", content);
 
     // Write the content to the file
     match write!(file, "{content}") {

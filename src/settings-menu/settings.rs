@@ -1,5 +1,4 @@
 use gloo::utils::document;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::spawn_local;
@@ -9,21 +8,13 @@ use yew::prelude::*;
 
 use crate::app::invoke;
 
-// #[path = "switcher.rs"]
-// mod switcher;
-// use switcher::ThemeSwitcher;
+use shared::FileWriteData;
 
 #[derive(Properties, PartialEq)]
 pub struct SettingsProps {
     pub closing_callback: Callback<MouseEvent>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct FileWriteData {
-    pub path: String,
-    pub name: String,
-    pub content: String,
-}
 
 #[function_component(SettingsMenu)]
 pub fn settings_menu(
@@ -41,8 +32,6 @@ pub fn settings_menu(
 
         Callback::from(move |_| {
             let theme = theme.clone();
-
-            gloo_console::log!(format!("theme should be: {}", *theme.clone()));
 
             spawn_local(async move {
                 switch_theme(theme.clone());

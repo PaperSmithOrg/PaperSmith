@@ -2,6 +2,14 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self};
 use std::path::PathBuf;
 
+
+#[derive(Serialize, Deserialize)]
+pub struct FileWriteData {
+    pub path: String,
+    pub name: String,
+    pub content: String,
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct Settings {
     pub theme: String,

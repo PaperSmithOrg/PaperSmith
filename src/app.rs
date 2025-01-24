@@ -12,8 +12,6 @@ use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlDocument;
 use web_sys::HtmlElement;
-use web_sys::Node;
-use yew::events::InputEvent;
 use yew::events::MouseEvent;
 use yew::prelude::*;
 use yew_icons::IconId;
@@ -29,15 +27,6 @@ use notepad::Notepads;
 mod toolbar;
 use toolbar::Toolbar;
 use yew_hooks::use_interval;
-use std::path::PathBuf;
-
-// #[path = "theme-switcher/switcher.rs"]
-// mod switcher;
-// use switcher::ThemeSwitcher;
-
-//#[path = "text_alignment_handlers.rs"]
-//mod text_alignment_handlers;
-//use text_alignment_handlers::TextAlignmentControls;
 
 #[path = "menubar/text/text_styling_handlers.rs"]
 mod text_styling_handlers;
@@ -46,10 +35,6 @@ use text_styling_handlers::TextStylingControls;
 #[path = "statistics/statistic.rs"]
 mod statistic;
 use statistic::Statistics;
-
-//#[path = "text_alignment_handlers.rs"]
-//mod text_alignment_handlers;
-//use text_alignment_handlers::TextAlignmentControls;
 
 #[path = "sidebar/sidebar.rs"]
 mod sidebar;
@@ -92,10 +77,6 @@ pub struct FileWriteData {
     pub content: String
 }
 
-// #[derive(Properties, PartialEq)]
-// pub struct StatisticProps {
-//     pub statistics: StatisticProp,
-// }
 
 #[function_component(App)]
 pub fn app() -> Html {
@@ -309,9 +290,6 @@ pub fn app() -> Html {
             <div id="main_content" class="flex flex-grow m-3">
                 <div class="flex flex-col min-w-[18rem] overflow-y-auto bg-crust">
                     <div class="flex-grow">{ (*sidebar).clone() }</div>
-                    // <div class="bottom-5 left-2 right-2">
-                    //     <ThemeSwitcher />
-                    // </div>
                 </div>
                 <Notepads pages_ref={pages_ref.clone()} text_input_ref={text_input_ref} />
             </div>
@@ -372,27 +350,3 @@ fn switch_theme(theme: String) {
     let theme2 = theme.to_lowercase().replace(' ', "");
     body.set_class_name(format!("{theme2} bg-crust text-text").as_str());
 }
-
-/*let save = Callback::from(move |_: MouseEvent| {
-    let args = to_value(&()).unwrap();
-    let ahhh = invoke("show_save_dialog", args).await;
-});*/
-
-/*This one worked----------------------------------------------------------
-let save = {
-    Callback::from(move |_| {
-        spawn_local(async move {
-            let args = to_value(&()).unwrap();
-            let ahhh = invoke("show_save_dialog", args).await;
-        });
-    })
-};*/
-
-/*let save = {
-    Callback::from(move |_| {
-        spawn_local(async move {
-            let args = to_value(&()).unwrap();
-            invoke("saveTest", args).await.as_string();
-        });
-    })
-};*/
