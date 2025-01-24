@@ -1,14 +1,18 @@
+use std::rc::Rc;
+
 use serde_wasm_bindgen::to_value;
 use shared::Project;
 use wasm_bindgen_futures::spawn_local;
 use yew::{Callback, MouseEvent, UseStateHandle};
+use yewdux::{dispatch, Dispatch};
 
-use crate::app::{invoke, wizard::PathArgs};
+use crate::app::{invoke, wizard::PathArgs, State};
 
 use super::renaming::RenameKind;
 
 pub fn get_delete_callback(
-    project: UseStateHandle<Option<Project>>,
+    state: Rc<State>,
+    dispatch: Dispatch<State>,
     title: String,
     chapter_index: Option<usize>,
     kind: RenameKind,
@@ -16,7 +20,7 @@ pub fn get_delete_callback(
     Callback::from(move |e: MouseEvent| {
         e.stop_propagation();
 
-        let mut temp_project = (*project.as_ref().unwrap()).clone();
+        let mut temp_project = (state.project.as_ref().unwrap()).clone();
         let mut delete_path = temp_project.path.clone();
         match kind {
             RenameKind::Book => {}
@@ -34,7 +38,7 @@ pub fn get_delete_callback(
                 temp_project.chapters[chapter_index.unwrap()]
                     .notes
                     .retain(|note| *note != title);
-                let chapter_name = project.as_ref().unwrap().chapters[chapter_index.unwrap()]
+                let chapter_name = state.project.as_ref().unwrap().chapters[chapter_index.unwrap()]
                     .name
                     .clone();
                 delete_path.push(chapter_name);
@@ -53,6 +57,8 @@ pub fn get_delete_callback(
             )
             .await;
         });
-        project.set(Some(temp_project));
+        dispatch.set(State {
+            project: Some(temp_project),
+        });
     })
 }

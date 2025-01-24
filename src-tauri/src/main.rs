@@ -1,18 +1,17 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use chrono::{DateTime, Utc};
-use lazy_static::lazy_static;
+use glob::glob;
+use loader::write_project_config;
+use log::info;
+use log::warn;
 use rfd::FileDialog;
 use saving::create_empty_file;
 use std::fs;
 use std::fs::File;
+use std::io::Read;
 use std::io::Write;
-use std::path::PathBuf;
 use std::process::Command;
-use std::sync::Mutex;
-use glob::glob;
-use gloo::console::log;
 
 mod loader;
 use loader::parse_project;
@@ -28,6 +27,7 @@ use saving::delete_path;
 use saving::rename_path;
 
 use shared::Project;
+use shared::Settings;
 
 fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
@@ -47,21 +47,24 @@ fn main() {
             open_explorer,
             create_empty_file,
             get_file_content,
+            get_settings,
             list_statistic_files,
             unformat_file_name,
             read_json_file,
+            write_project_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 #[tauri::command]
 fn get_file_content(path: String) -> String {
-    let pathbuf = PathBuf::from(path.clone());
-    println!("{}", path.clone());
-    if pathbuf.exists() & pathbuf.is_file() {
-        fs::read_to_string(path).expect("Should have been able to read the file")
-    } else {
-        String::new()
+    info!("Reading file: {path}");
+    match fs::read_to_string(path) {
+        Ok(string) => string,
+        Err(e) => {
+            warn!("Error reading file: {e}");
+            String::new()
+        }
     }
 }
 
@@ -84,7 +87,6 @@ fn open_explorer(path: String) {
     }
 }
 
-
 #[tauri::command]
 fn list_statistic_files() -> Result<Vec<String>, String> {
     let mut path = get_data_dir();
@@ -102,7 +104,6 @@ fn list_statistic_files() -> Result<Vec<String>, String> {
                             let original_name = file_name.to_string_lossy();
                             if let Some(formatted_name) = format_file_name(&original_name) {
                                 files.push(formatted_name);
-                                
                             } else {
                                 eprintln!("Unrecognized file name format: {}", original_name);
                             }
@@ -197,15 +198,13 @@ fn extract_div_contents(input: &str) -> Vec<String> {
 }
 
 // Definiere eine globale Variable für die Startzeit
-lazy_static! {
-    static ref START_TIME: Mutex<DateTime<Utc>> = Mutex::new(Utc::now());
-}
+// lazy_static! {
+//     static ref START_TIME: Mutex<DateTime<Utc>> = Mutex::new(Utc::now());
+// }
 
 #[tauri::command]
-fn write_to_json(path: &str, content: &str) {
-    let start_time = *START_TIME.lock().unwrap();
-    let formatted_time = start_time.format("%Y-%m-%dT%H-%M-%S").to_string();
-    let file_name = format!("{formatted_time}.json");
+fn write_to_json(path: &str, name: &str, content: &str) {
+    let file_name = format!("{name}.json");
     let file_path = format!("{path}/{file_name}");
 
     let mut file = match File::create(&file_path) {
@@ -215,7 +214,35 @@ fn write_to_json(path: &str, content: &str) {
             return;
         }
     };
-    write!(file, "{}", content);
+
+    let _result = write!(file, "{content}");
+}
+
+#[tauri::command]
+fn get_settings(path: &str) -> Option<Settings> {
+    let file_path = format!("{path}/settings.json");
+
+    let file = File::open(&file_path);
+
+    match file {
+        Ok(mut x) => {
+            let mut content = String::new();
+            let _ = x.read_to_string(&mut content);
+
+            let json_content: Settings =
+                serde_json::from_str(&content).expect("JSON was not well-formatted");
+
+            println!("{}", json_content.theme);
+
+            Some(json_content)
+        }
+        Err(e) => {
+            eprint!("{e}");
+            let settings = Settings::default();
+
+            Some(settings)
+        }
+    }
 }
 
 #[tauri::command]
@@ -242,7 +269,12 @@ fn write_to_file(path: &str, content: &str) {
         }
     }
 
-    let mut file = match OpenOptions::new().write(true).truncate(true).create(true).open(path) {
+    let mut file = match OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(path)
+    {
         Ok(f) => f,
         Err(e) => {
             eprintln!("Failed to open or create the file: {e:?}");
@@ -250,7 +282,7 @@ fn write_to_file(path: &str, content: &str) {
         }
     };
 
-    println!("{:?}", content.clone());
+    println!("{:?}", content);
 
     // Write the content to the file
     match write!(file, "{content}") {

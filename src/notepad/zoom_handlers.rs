@@ -8,14 +8,18 @@ pub fn zoom_increase_handler(
     font_size: UseStateHandle<f64>,
     container_ref: NodeRef,
 ) -> Callback<MouseEvent> {
+
+    let max_font_size = 72.0;
+
     Callback::from(move |_| {
         // Get the current font size and increase it by 1
         let current_font_size = *font_size;
-        font_size.set(current_font_size + 1.0);
+        let new_font_size = (current_font_size + 1.0).min(max_font_size);
+        font_size.set(new_font_size);
 
         // Apply the new font size to the container using inline styles
         if let Some(container) = container_ref.cast::<HtmlElement>() {
-            container.set_inner_html(&format!("font-size: {}px;", current_font_size + 1.0));
+            container.set_inner_html(&format!("font-size: {}px;", new_font_size));
         }
     })
 }
@@ -24,14 +28,18 @@ pub fn zoom_decrease_handler(
     font_size: UseStateHandle<f64>,
     container_ref: NodeRef,
 ) -> Callback<MouseEvent> {
+
+    let min_font_size = 5.0;
+
     Callback::from(move |_| {
         // Get the current font size and decrease it by 1
         let current_font_size = *font_size;
-        font_size.set(current_font_size - 1.0);
+        let new_font_size = (current_font_size - 1.0).max(min_font_size);
+        font_size.set(new_font_size);
 
         // Apply the new font size to the container using inline styles
         if let Some(container) = container_ref.cast::<HtmlElement>() {
-            container.set_inner_html(&format!("font-size: {}px;", current_font_size - 1.0));
+            container.set_inner_html(&format!("font-size: {}px;", min_font_size));
         }
     })
 }
@@ -56,7 +64,7 @@ pub fn zoom_controls(
 
     // Render the controls with two buttons
     html! {
-        <div class="subbar-icon flex items-center m-1">
+        <div class="subbar-icon flex items-center m-1 select-none">
             <Button callback={on_zoom_decrease} icon={IconId::LucideZoomOut} title="Zoom Out" size=2.5 />
             <Button callback={on_zoom_increase} icon={IconId::LucideZoomIn}  title="Zoom In" size=2.5 />
         </div>

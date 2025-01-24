@@ -2,13 +2,43 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize)]
+pub struct FileWriteData {
+    pub path: String,
+    pub name: String,
+    pub content: String,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+pub struct Settings {
+    pub theme: String,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            theme: String::from("Light"),
+        }
+    }
+}
+
+impl fmt::Display for Settings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Settings:")?;
+        writeln!(f, "Theme: {:?}", self.theme)?;
+
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct Project {
     pub path: PathBuf,
     pub chapters: Vec<Chapter>,
+    pub active_chapter: Option<usize>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct Chapter {
     pub name: String,
     pub notes: Vec<String>,

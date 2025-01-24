@@ -1,4 +1,4 @@
-use crate::app::invoke;
+use crate::app::{invoke, State};
 use serde::Serialize;
 use serde_wasm_bindgen::to_value;
 use shared::Project;
@@ -8,11 +8,11 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::{HtmlButtonElement, HtmlInputElement};
 use yew::prelude::*;
 use yew_icons::{Icon, IconId};
+use yewdux::prelude::*;
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
     pub closing_callback: Callback<MouseEvent>,
-    pub project_ref: UseStateHandle<Option<Project>>,
 }
 
 #[derive(Serialize)]
@@ -29,9 +29,9 @@ pub struct PathArgs {
 pub fn project_wizard(
     Props {
         closing_callback: on_close,
-        project_ref,
     }: &Props,
 ) -> Html {
+    let (_, dispatch) = use_store::<State>();
     let title = use_state(String::new);
     let location = use_state(String::new);
     let title_ref = use_node_ref();
@@ -181,11 +181,11 @@ pub fn project_wizard(
 
     let on_confirm = {
         let on_close = on_close.clone();
-        let project_ref = project_ref.clone();
+        let dispatch = dispatch.clone();
         Callback::from(move |_| {
             let location = location.clone();
             let title = title.clone();
-            let project_ref = project_ref.clone();
+            let dispatch = dispatch.clone();
             if !*is_data_valid {
                 return;
             }
@@ -202,7 +202,9 @@ pub fn project_wizard(
                 let project_or_none: Option<Project> =
                     serde_wasm_bindgen::from_value(project_jsvalue).unwrap();
                 if project_or_none.is_some() {
-                    project_ref.set(project_or_none);
+                    dispatch.set(State {
+                        project: project_or_none,
+                    });
                 }
             });
             on_close.emit(MouseEvent::new("Dummy").unwrap());
