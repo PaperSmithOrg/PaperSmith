@@ -4,7 +4,7 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew_icons::IconId;
-use yewdux::{dispatch, prelude::*};
+use yewdux::prelude::*;
 
 #[path = "chevron.rs"]
 mod chevron;

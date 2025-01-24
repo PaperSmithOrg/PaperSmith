@@ -263,7 +263,6 @@ fn chapter(
     let on_load = {
         let input_ref = input_ref.clone();
         let chapter = chapter.clone();
-        let state = state.clone();
 
         Callback::from(move |_| {
             let dispatch = dispatch.clone();
@@ -323,7 +322,7 @@ fn chapter(
     }
 }
 
-#[derive(Properties, PartialEq)]
+#[derive(Properties, PartialEq, Eq)]
 pub struct EntryProps {
     pub name: String,
     pub chapter_index: usize,

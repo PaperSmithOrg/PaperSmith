@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
 use serde_wasm_bindgen::to_value;
-use shared::Project;
 use wasm_bindgen_futures::spawn_local;
-use yew::{Callback, MouseEvent, UseStateHandle};
-use yewdux::{dispatch, Dispatch};
+use yew::{Callback, MouseEvent};
+use yewdux::Dispatch;
 
 use crate::app::{invoke, wizard::PathArgs, State};
 

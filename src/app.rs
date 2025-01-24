@@ -97,7 +97,7 @@ pub fn app() -> Html {
     let pages_ref = use_node_ref();
 
     {
-        use_effect_with((), move |_| {
+        use_effect_with((), move |()| {
             apply_settings();
         });
     }
@@ -120,10 +120,9 @@ pub fn app() -> Html {
 
     let save_fn = {
         let text_input_ref = text_input_ref.clone();
-        let project_path = project_path.clone();
         let modal = modal.clone();
 
-        Callback::from(move |_| {
+        Callback::from(move |()| {
             let text_input_ref = text_input_ref.clone();
             let project_path = project_path.clone();
             let modal = modal.clone();
@@ -189,16 +188,12 @@ pub fn app() -> Html {
         })
     };
 
-    let save = {
-        let save_fn = save_fn.clone();
-        Callback::from(move |_| save_fn.emit(()))
-    };
-
+    let save = Callback::from(move |_: MouseEvent| save_fn.emit(()));
     {
-        let save = save_fn.clone();
+        let save = save.clone();
         use_interval(
             move || {
-                save.emit(());
+                save.emit(MouseEvent::new("Dummy").unwrap());
             },
             300_000,
         ); // 300,000 ms = 5 minutes
@@ -224,7 +219,6 @@ pub fn app() -> Html {
 
     let open_statistics = {
         let modal = modal.clone();
-        let pages_ref = pages_ref.clone();
         Callback::from(move |_| {
             modal.set(html! {
                 <VerticalModal
@@ -234,7 +228,6 @@ pub fn app() -> Html {
                                 let modal = modal.clone();
                                 Callback::from(move |_| modal.set(html!()))
                             }
-                            pages_ref={pages_ref.clone()}
                         />
                     }}
                 />
@@ -330,11 +323,7 @@ pub fn app() -> Html {
                 class="h-3 justify-between items-center flex p-2 bg-crust border-solid border-t-[2px] border-x-0 border-b-0 border-text"
             >
                 <div class="bottombar-left">
-                    <Statistics
-                        closing_callback={let modal = modal.clone();
-                            Callback::from(move |_| modal.set(html!()))}
-                        pages_ref={pages_ref.clone()}
-                    />
+                    <Statistics pages_ref={pages_ref.clone()} />
                 </div>
                 <div class="bottombar-right">
                     <Button
@@ -370,17 +359,15 @@ fn apply_settings() {
         let theme = settings.theme;
 
         let _ = Timeout::new(10, {
-            let theme = theme.clone();
-
             move || {
-                switch_theme(theme);
+                switch_theme(&theme);
             }
         })
         .forget();
     });
 }
 
-fn switch_theme(theme: String) {
+fn switch_theme(theme: &str) {
     let html_doc: HtmlDocument = document().dyn_into().unwrap();
     let body = html_doc.body().unwrap();
     let theme2 = theme.to_lowercase().replace(' ', "");

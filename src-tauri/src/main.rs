@@ -80,6 +80,7 @@ fn open_explorer(path: String) {
 
     #[cfg(target_os = "linux")]
     {
+        #[allow(clippy::zombie_processes)]
         Command::new("xdg-open")
             .arg(path)
             .spawn()
@@ -92,7 +93,7 @@ fn list_statistic_files() -> Result<Vec<String>, String> {
     let mut path = get_data_dir();
     path.push_str("/PaperSmith/");
 
-    let pattern = format!("{}/**/*", path);
+    let pattern = format!("{path}/**/*");
     let mut files = Vec::new();
 
     match glob(&pattern) {
@@ -105,18 +106,18 @@ fn list_statistic_files() -> Result<Vec<String>, String> {
                             if let Some(formatted_name) = format_file_name(&original_name) {
                                 files.push(formatted_name);
                             } else {
-                                eprintln!("Unrecognized file name format: {}", original_name);
+                                eprintln!("Unrecognized file name format: {original_name}");
                             }
                         }
                     }
                     Err(e) => {
-                        eprintln!("Error reading entry: {}", e);
-                        return Err(format!("Error reading entry: {}", e));
+                        eprintln!("Error reading entry: {e}");
+                        return Err(format!("Error reading entry: {e}"));
                     }
                 }
             }
         }
-        Err(e) => return Err(format!("Invalid glob pattern: {}", e)),
+        Err(e) => return Err(format!("Invalid glob pattern: {e}")),
     }
 
     Ok(files)
@@ -127,35 +128,32 @@ fn format_file_name(file_name: &str) -> Option<String> {
         let parts: Vec<&str> = stripped.split('T').collect();
         if parts.len() == 2 {
             let date = parts[0];
-            let time = parts[1].replace("-", ":");
-            return Some(format!("{} {}", date, time));
+            let time = parts[1].replace('-', ":");
+            return Some(format!("{date} {time}"));
         }
     }
     None
 }
 
 #[tauri::command]
-fn unformat_file_name(name: String) -> Option<String> { 
+fn unformat_file_name(name: &str) -> Option<String> {
     let parts: Vec<&str> = name.split(' ').collect();
     if parts.len() == 2 {
         let date = parts[0];
-        let time = parts[1].replace(":", "-");
-        return Some(format!("{}T{}.json", date, time));
+        let time = parts[1].replace(':', "-");
+        return Some(format!("{date}T{time}.json"));
     }
     None
 }
 
 #[tauri::command]
 fn read_json_file(path: String) -> Option<String> {
-    match fs::read_to_string(path) {
-        Ok(content) => {
-            match serde_json::from_str::<serde_json::Value>(&content) {
-                Ok(_) => Some(content),
-                Err(_) => None,
-            }
+    fs::read_to_string(path).map_or(None, |content| {
+        match serde_json::from_str::<serde_json::Value>(&content) {
+            Ok(_) => Some(content),
+            Err(_) => None,
         }
-        Err(_) => None,
-    }
+    })
 }
 
 #[tauri::command]
@@ -170,31 +168,6 @@ fn get_documents_folder() -> String {
         .to_str()
         .unwrap()
         .to_string()
-}
-
-#[tauri::command]
-fn extract_div_contents(input: &str) -> Vec<String> {
-    // Initialize an empty vector to store the extracted contents
-    let mut result = Vec::new();
-
-    // Define the start and end tag strings
-    let start_tag = "<div>";
-    let end_tag = "</div>";
-
-    // Split the input string by the start tag
-    let parts: Vec<&str> = input.split(start_tag).collect();
-
-    // Iterate over the parts and extract the contents between the start and end tags
-    for part in parts {
-        if let Some(end_index) = part.find(end_tag) {
-            if part.contains("<br>") {
-            } else {
-                let content = &part[..end_index];
-                result.push(content.to_string());
-            }
-        }
-    }
-    result
 }
 
 // Definiere eine globale Variable für die Startzeit
@@ -219,7 +192,7 @@ fn write_to_json(path: &str, name: &str, content: &str) {
 }
 
 #[tauri::command]
-fn get_settings(path: &str) -> Option<Settings> {
+fn get_settings(path: &str) -> Settings {
     let file_path = format!("{path}/settings.json");
 
     let file = File::open(&file_path);
@@ -234,13 +207,11 @@ fn get_settings(path: &str) -> Option<Settings> {
 
             println!("{}", json_content.theme);
 
-            Some(json_content)
+            json_content
         }
         Err(e) => {
             eprint!("{e}");
-            let settings = Settings::default();
-
-            Some(settings)
+            Settings::default()
         }
     }
 }
@@ -282,7 +253,7 @@ fn write_to_file(path: &str, content: &str) {
         }
     };
 
-    println!("{:?}", content);
+    //println!("{:?}", content);
 
     // Write the content to the file
     match write!(file, "{content}") {

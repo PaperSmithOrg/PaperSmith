@@ -1,20 +1,17 @@
-use std::borrow::Borrow;
-
 use chrono::prelude::*;
 use gloo_timers::callback::Timeout;
-use js_sys::Array;
+use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
 use serde_wasm_bindgen::from_value;
+use std::sync::Mutex;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlElement;
 use web_sys::HtmlSelectElement;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
-use lazy_static::lazy_static;
-use std::sync::Mutex;
 
 #[path = "wpm.rs"]
 mod wpm;
@@ -24,11 +21,14 @@ use crate::app::invoke;
 use shared::FileWriteData;
 
 #[derive(Properties, PartialEq)]
-pub struct CharCountProps {
-    pub closing_callback: Callback<MouseEvent>,
+pub struct StatisticsProps {
     pub pages_ref: NodeRef,
 }
 
+#[derive(Properties, PartialEq)]
+pub struct StatisticsWindowProps {
+    pub closing_callback: Callback<MouseEvent>,
+}
 
 // #[derive(Properties, PartialEq)]
 // pub struct StatisticProp {
@@ -65,12 +65,7 @@ struct FileContent {
 }
 
 #[function_component]
-pub fn Statistics(
-    CharCountProps {
-        closing_callback: on_close,
-        pages_ref,
-    }: &CharCountProps,
-) -> Html {
+pub fn Statistics(StatisticsProps { pages_ref }: &StatisticsProps) -> Html {
     let char_count = use_state(|| 0);
     let char_count_no_spaces = use_state(|| 0);
     let word_count = use_state(|| 0);
@@ -132,7 +127,8 @@ pub fn Statistics(
                                 .to_string();
 
                                 let start_time = *START_TIME.lock().unwrap();
-                                let formatted_time = start_time.format("%Y-%m-%dT%H-%M-%S").to_string();
+                                let formatted_time =
+                                    start_time.format("%Y-%m-%dT%H-%M-%S").to_string();
 
                                 let path_jsvalue = invoke("get_data_dir", JsValue::null()).await;
 
@@ -170,19 +166,17 @@ pub fn Statistics(
 
 #[function_component]
 pub fn StatisticWindow(
-    CharCountProps {
+    StatisticsWindowProps {
         closing_callback: on_close,
-        pages_ref,
-    }: &CharCountProps,
+    }: &StatisticsWindowProps,
 ) -> Html {
-    let files = use_state(|| vec![]);
-    let selected_file = use_state(|| String::new());
-    let file_content = use_state(|| String::new());
+    let files = use_state(Vec::new);
+    let selected_file = use_state(String::new);
+    let file_content = use_state(String::new);
     let select_ref = use_node_ref();
 
     let onchange = {
         let select_ref = select_ref.clone();
-        let selected_file = selected_file.clone();
         let file_content = file_content.clone();
 
         Callback::from(move |_| {
@@ -198,7 +192,6 @@ pub fn StatisticWindow(
                         let selected_file_value = select.value();
 
                         {
-                            let selected_file_value = selected_file_value.clone();
                             let file_content = file_content.clone();
                             spawn_local(async move {
                                 let selected_file_value = selected_file_value.clone();
@@ -248,7 +241,6 @@ pub fn StatisticWindow(
                                 .await;
 
                                 let temp_string: Option<String> = serde_wasm_bindgen::from_value(file_content_jsvalue).unwrap();
-                                
                                     if let Some(content) = temp_string {
                                         gloo_console::log!(format!("File Content: {}", content));
 
@@ -283,7 +275,6 @@ pub fn StatisticWindow(
         })
     };
 
-
     {
         let files = files.clone();
         use_interval(
@@ -296,64 +287,62 @@ pub fn StatisticWindow(
                         let file_list: Vec<String> = from_value(file_list).unwrap();
 
                         files.set(file_list);
-                    })
+                    });
                 }
             },
             1000,
         );
     }
 
-    fn files_to_html(files: Vec<String>) -> Html {
-        files
-            .iter()
-            .map(|file| {
-                html! {
-                    <option class="bg-mantle" value={file.clone()}>
-                        { file }
-                    </option>
-                }
-            })
-            .collect()
-    }
-
     html! {
         <>
-        <div class="absolute top-0 left-0 z-50 bg-mantle/70 h-full w-full flex items-center justify-center text-text">
-        <div class="bg-base rounded-lg max-w-[30%] min-w-[30%] max-h-[50%] min-h-[50%] p-8 flex flex-col justify-between">
-            <div>
-                <label for="file-select" class="block text-text font-medium mb-2">{"Select a file"}</label>
-                <select
-                    ref={select_ref}
-                    class="bg-subtext rounded-lg text-mantle focus:ring-accent border border-primary p-2 w-full"
-                    onchange={onchange}
+            <div
+                class="absolute top-0 left-0 z-50 bg-mantle/70 h-full w-full flex items-center justify-center text-text"
+            >
+                <div
+                    class="bg-base rounded-lg max-w-[30%] min-w-[30%] max-h-[50%] min-h-[50%] p-8 flex flex-col justify-between"
                 >
-                    {
-                        files_to_html((*files).clone())
-                    }
-                </select>
-            </div>
-
-                <div class="mt-4">
-                    <label class="block text-subtext font-medium mb-2">{"File Content"}</label>
-                    <div class="bg-mantle p-4 rounded-lg">
-                        { 
-                               if !(*file_content).is_empty() {
-                               html! { <pre class="text-text whitespace-pre-wrap overflow-auto">{ &*file_content }</pre> }
-                            } else {
-                               html! { <p class="text-subtext">{"No content to display."}</p> }
-                            }
-                        }
+                    <div>
+                        <label for="file-select" class="block text-text font-medium mb-2">
+                            { "Select a file" }
+                        </label>
+                        <select
+                            ref={select_ref}
+                            class="bg-subtext rounded-lg text-mantle focus:ring-accent border border-primary p-2 w-full"
+                            onchange={onchange}
+                        >
+                            { files_to_html(&files) }
+                        </select>
                     </div>
-                </div>
-
+                    <div class="mt-4">
+                        <label class="block text-subtext font-medium mb-2">
+                            { "File Content" }
+                        </label>
+                        <div class="bg-mantle p-4 rounded-lg">
+                            { if (*file_content).is_empty() {
+                               html! { <p class="text-subtext">{"No content to display."}</p> }
+                            } else {
+                               html! { <pre class="text-text whitespace-pre-wrap overflow-auto">{ &*file_content }</pre> }
+                            } }
+                        </div>
+                    </div>
                     <button
-                    onclick={on_close}
-                    class="rounded-lg text-lg px-3 py-1 bg-secondary text-crust hover:bg-accent hover:scale-105 border-0 transition-transform self-end shadow-md"
-                >
-                    { "Close" }
-                   </button>
+                        onclick={on_close}
+                        class="rounded-lg text-lg px-3 py-1 bg-secondary text-crust hover:bg-accent hover:scale-105 border-0 transition-transform self-end shadow-md"
+                    >
+                        { "Close" }
+                    </button>
                 </div>
             </div>
         </>
     }
+}
+
+fn files_to_html(files: &[String]) -> Html {
+    files
+        .iter()
+        .map(|file| {
+            html! { <option class="bg-mantle" value={file.clone()}>{ file }</option> }
+        })
+        .collect()
 }

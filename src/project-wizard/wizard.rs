@@ -181,7 +181,6 @@ pub fn project_wizard(
 
     let on_confirm = {
         let on_close = on_close.clone();
-        let dispatch = dispatch.clone();
         Callback::from(move |_| {
             let location = location.clone();
             let title = title.clone();

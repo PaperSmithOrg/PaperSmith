@@ -1,6 +1,6 @@
 use pulldown_cmark::{html::push_html, Options, Parser};
-use web_sys::HtmlElement;
 use regex::Regex;
+use web_sys::HtmlElement;
 use yew::prelude::*;
 
 #[path = "zoom_handlers.rs"]
@@ -28,7 +28,10 @@ pub fn notepads(
     let on_text_input = text_input_handler(text_input_ref.clone(), render_ref.clone());
 
     html!(
-        <div class="flex flex-grow h-notepad bg-crust justify-evenly gap-5 px-3" ref={pages_ref.clone()}>
+        <div
+            class="flex flex-grow h-notepad bg-crust justify-evenly gap-5 px-3"
+            ref={pages_ref.clone()}
+        >
             <div
                 class="bg-base max-h-full flex flex-1 flex-col overflow-hidden mx-2 rounded-md max-w-[45vw]"
             >
@@ -97,7 +100,7 @@ fn rendering_handler(render_ref: &NodeRef, new_lines: &[String]) {
 
             if line.trim().is_empty() {
                 if last_was_empty {
-                    "".to_string()
+                    String::new()
                 } else {
                     last_was_empty = true;
                     "<br>".to_string()
@@ -105,9 +108,11 @@ fn rendering_handler(render_ref: &NodeRef, new_lines: &[String]) {
             } else {
                 last_was_empty = false;
 
-                let line_with_mark = mark_regex.replace_all(line, r#"<mark>$1</mark>"#);
-                let line_with_underline = underline_regex.replace_all(&line_with_mark, r#"<u>$1</u>"#);
-                let line_with_image = image_regex.replace_all(&line_with_underline, r#"<img src="$1"/>"#);
+                let line_with_mark = mark_regex.replace_all(line, r"<mark>$1</mark>");
+                let line_with_underline =
+                    underline_regex.replace_all(&line_with_mark, r"<u>$1</u>");
+                let line_with_image =
+                    image_regex.replace_all(&line_with_underline, r#"<img src="$1"/>"#);
 
                 let parser = Parser::new_ext(line_with_image.as_ref(), options);
                 let mut html_output = String::new();

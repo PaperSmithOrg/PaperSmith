@@ -61,10 +61,14 @@ fn render_toolbar() -> Html {
 fn render_submenu(name: &str, items: Vec<Html>) -> Html {
     html! {
         <li class="toolbar-submenu relative group">
-            <span class="cursor-pointer px-2 py-1 m-0 inline-block transition-colors duration-300 select-none rounded-[5px] hover:bg-overlay0 hover:rounded-[5px]">
+            <span
+                class="cursor-pointer px-2 py-1 m-0 inline-block transition-colors duration-300 select-none rounded-[5px] hover:bg-overlay0 hover:rounded-[5px]"
+            >
                 { name }
             </span>
-            <ul class="bg-crust hidden absolute group-hover:block top-full left-0 list-none p-2 m-0 z-10 min-w-[200px] shadow-md rounded-[8px]">
+            <ul
+                class="bg-crust hidden absolute group-hover:block top-full left-0 list-none p-2 m-0 z-10 min-w-[200px] shadow-md rounded-[8px]"
+            >
                 { for items }
             </ul>
         </li>
@@ -73,7 +77,9 @@ fn render_submenu(name: &str, items: Vec<Html>) -> Html {
 
 fn toolbar_item(name: &str, shortcut: &str) -> Html {
     html! {
-        <li class="toolbar-item hover:text-subtext cursor-pointer py-[1px] px-[0.5rem] m-0 flex justify-between items-center select-none rounded-[5px] transition-colors duration-300 hover:rounded-[5px]">
+        <li
+            class="toolbar-item hover:text-subtext cursor-pointer py-[1px] px-[0.5rem] m-0 flex justify-between items-center select-none rounded-[5px] transition-colors duration-300 hover:rounded-[5px]"
+        >
             <span>{ name }</span>
             if !shortcut.is_empty() {
                 <span class="toolbar-shortcut text-subtext ml-auto text-[12px]">{ shortcut }</span>

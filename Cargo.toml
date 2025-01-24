@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 shared = { path = "shared" }
-yew = { version = "0.21", features = ["csr"] }
-wasm-bindgen = "0.2.92"
-wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3.69", features = [
+yew = { version = "0.21.0", features = ["csr"] }
+wasm-bindgen = "0.2.100"
+wasm-bindgen-futures = "0.4.50"
+web-sys = { version = "0.3.77", features = [
   "HtmlElement",
   "HtmlInputElement",
   "HtmlButtonElement",
@@ -25,12 +25,11 @@ web-sys = { version = "0.3.69", features = [
   "Window",
   "Element",
 ] }
-js-sys = "0.3"
-serde = { version = "1", features = ["derive"] }
-serde-wasm-bindgen = "0.6"
+js-sys = "0.3.77"
+serde = { version = "1.0.217", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
 console_error_panic_hook = "0.1.7"
-# TODO: Find Spell-Check icon (It's not LucideSpellCheck for some reason)
-yew_icons = { version = "0.8", features = [
+yew_icons = { version = "0.8.0", features = [
   "LucideChevronDown",
   "LucideAlignCenter",
   "LucideAlignJustify",
@@ -62,14 +61,16 @@ yew_icons = { version = "0.8", features = [
   "LucideBarChart3",
 ] }
 gloo-timers = "0.3.0"
-yew-hooks = "0.3.2"
+yew-hooks = "0.3.3"
 gloo-console = "0.3.0"
-chrono = "0.4.38"
+chrono = "0.4.39"
 text_io = "0.1.12"
 pulldown-cmark = "0.12.2"
-serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0.137", default-features = false, features = [
+  "alloc",
+] }
 gloo = "0.11.0"
-lazy_static = "1.4"
+lazy_static = "1.5.0"
 regex = "1.11.1"
 yewdux = "0.10.0"
 log = "0.4.25"

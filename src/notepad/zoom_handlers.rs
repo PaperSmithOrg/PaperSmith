@@ -8,7 +8,6 @@ pub fn zoom_increase_handler(
     font_size: UseStateHandle<f64>,
     container_ref: NodeRef,
 ) -> Callback<MouseEvent> {
-
     let max_font_size = 72.0;
 
     Callback::from(move |_| {
@@ -19,7 +18,7 @@ pub fn zoom_increase_handler(
 
         // Apply the new font size to the container using inline styles
         if let Some(container) = container_ref.cast::<HtmlElement>() {
-            container.set_inner_html(&format!("font-size: {}px;", new_font_size));
+            container.set_inner_html(&format!("font-size: {new_font_size}px;"));
         }
     })
 }
@@ -28,7 +27,6 @@ pub fn zoom_decrease_handler(
     font_size: UseStateHandle<f64>,
     container_ref: NodeRef,
 ) -> Callback<MouseEvent> {
-
     let min_font_size = 5.0;
 
     Callback::from(move |_| {
@@ -39,7 +37,7 @@ pub fn zoom_decrease_handler(
 
         // Apply the new font size to the container using inline styles
         if let Some(container) = container_ref.cast::<HtmlElement>() {
-            container.set_inner_html(&format!("font-size: {}px;", min_font_size));
+            container.set_inner_html(&format!("font-size: {min_font_size}px;"));
         }
     })
 }
@@ -65,8 +63,18 @@ pub fn zoom_controls(
     // Render the controls with two buttons
     html! {
         <div class="subbar-icon flex items-center m-1 select-none">
-            <Button callback={on_zoom_decrease} icon={IconId::LucideZoomOut} title="Zoom Out" size=2.5 />
-            <Button callback={on_zoom_increase} icon={IconId::LucideZoomIn}  title="Zoom In" size=2.5 />
+            <Button
+                callback={on_zoom_decrease}
+                icon={IconId::LucideZoomOut}
+                title="Zoom Out"
+                size=2.5
+            />
+            <Button
+                callback={on_zoom_increase}
+                icon={IconId::LucideZoomIn}
+                title="Zoom In"
+                size=2.5
+            />
         </div>
     }
 }
