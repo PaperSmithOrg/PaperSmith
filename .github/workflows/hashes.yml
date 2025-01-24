@@ -3,7 +3,7 @@ name: "upload hashes"
 on:
   workflow_dispatch:
   release:
-    types: [created, prereleased]
+    types: [created, edited, published]
 
 jobs:
   generate_hashes:
