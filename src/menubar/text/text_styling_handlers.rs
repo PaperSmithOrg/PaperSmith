@@ -5,12 +5,12 @@ use yew_icons::IconId;
 
 use crate::app::sidebar::buttons::Button;
 
-fn apply_style(range: &Range, opening_style: &String, closing_style: &String) {
+fn apply_style(range: &Range, style: &String) {
     let document = window().unwrap().document().unwrap();
 
     let selected_text = range.to_string();
 
-    let new_text = format!("{opening_style}{selected_text}{closing_style}");
+    let new_text = format!("{style}{selected_text}{style}");
 
     let text_node = document.create_text_node(&new_text);
     range.delete_contents().unwrap();
@@ -34,19 +34,23 @@ pub struct StyleButtonProps {
     pub icon: IconId,
     pub title: String,
     pub range: UseStateHandle<Option<Range>>,
-    pub opening_style: String,
-    pub closing_style: String,
+    pub style: String,
 }
 
 #[function_component(StyleButton)]
 pub fn style_button(style_props: &StyleButtonProps) -> Html {
     let range_state = style_props.range.clone();
-    let opening_style = style_props.opening_style.clone();
-    let closing_style = style_props.closing_style.clone();
+    let style = style_props.style.clone();
 
     let onclick = Callback::from(move |_| {
         if let Some(range) = range_state.as_ref() {
-            apply_style(range, &opening_style, &closing_style);
+            apply_style(range, &style);
+
+            let document = gloo::utils::document();
+            if let Some(notepad_element) = document.get_element_by_id("notepad-textarea-edit") {
+                let event = web_sys::InputEvent::new("input").unwrap();
+                notepad_element.dispatch_event(&event).unwrap();
+            }
         }
     });
 
@@ -100,29 +104,25 @@ pub fn text_styling_controls() -> Html {
             icon: IconId::LucideBold,
             title: "Bold".to_string(),
             range: range_state.clone(),
-            opening_style: "**".to_string(),
-            closing_style: "**".to_string(),
+            style: "**".to_string(),
         },
         StyleButtonProps {
             icon: IconId::LucideItalic,
             title: "Italic".to_string(),
             range: range_state.clone(),
-            opening_style: "_".to_string(),
-            closing_style: "_".to_string(),
+            style: "_".to_string(),
         },
         StyleButtonProps {
             icon: IconId::LucideUnderline,
             title: "Underline".to_string(),
             range: range_state.clone(),
-            opening_style: "<u>".to_string(),
-            closing_style: "</u>".to_string(),
+            style: "__".to_string(),
         },
         StyleButtonProps {
             icon: IconId::LucideHighlighter,
             title: "Highlighter".to_string(),
             range: range_state,
-            opening_style: "<mark>".to_string(),
-            closing_style: "</mark>".to_string(),
+            style: "::".to_string(),
         },
     ];
 
@@ -132,7 +132,7 @@ pub fn text_styling_controls() -> Html {
             .iter()
             .map(|props| {
                 html! { <>
-                    <StyleButton icon={props.icon} title={props.title.clone()} range={props.range.clone()} opening_style={props.opening_style.clone()} closing_style={props.closing_style.clone()}/>
+                    <StyleButton icon={props.icon} title={props.title.clone()} range={props.range.clone()} style={props.style.clone()}/>
                     </>
                 }
             })

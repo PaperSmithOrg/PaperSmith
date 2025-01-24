@@ -2,6 +2,12 @@
 
 _A free and open-source writing application for authors_
 
+### Main Contributors
+- Toll25
+- MasterRick1337
+- Alllpacka
+- DotDo1
+
 ### Table of contents
 
 - [Status](#status)
@@ -29,10 +35,10 @@ Features that are either already finished, are in progress or are planned for fu
 - [x] Statistics
 - [x] Project creation wizard
 - [x] Markdown Formatting
+- [x] Autosaving
 
 #### Planned
 
-- [ ] Autosaving
 - [ ] Automatic Backups
 - [ ] Settings menu
 - [ ] Export options

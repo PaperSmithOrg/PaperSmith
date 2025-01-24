@@ -9,6 +9,7 @@ use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
+use glob::glob;
 
 mod loader;
 use loader::parse_project;
@@ -30,7 +31,6 @@ fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            show_save_dialog,
             get_project,
             write_to_file,
             write_to_json,
@@ -46,6 +46,7 @@ fn main() {
             create_empty_file,
             get_file_content,
             get_settings,
+            list_statistic_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -80,17 +81,66 @@ fn open_explorer(path: String) {
     }
 }
 
-#[tauri::command]
-async fn show_save_dialog() -> Result<String, String> {
-    let path = FileDialog::new()
-        .set_title("Save File")
-        .add_filter("Text", &["txt"])
-        .add_filter("MarkDown", &["md"])
-        .save_file()
-        .ok_or_else(|| "No file selected".to_string())?;
 
-    Ok(path.to_str().unwrap_or_default().to_string())
+#[tauri::command]
+fn list_statistic_files() -> Result<Vec<String>, String> {
+    let mut path = get_data_dir();
+    path.push_str("/PaperSmith/");
+
+    let pattern = format!("{}/**/*", path);
+    let mut files = Vec::new();
+
+    match glob(&pattern) {
+        Ok(entries) => {
+            for entry in entries {
+                match entry {
+                    Ok(path) => {
+                        if let Some(file_name) = path.file_name() {
+                            let original_name = file_name.to_string_lossy();
+                            if let Some(formatted_name) = format_file_name(&original_name) {
+                                files.push(formatted_name);
+                                
+                            } else {
+                                eprintln!("Unrecognized file name format: {}", original_name);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error reading entry: {}", e);
+                        return Err(format!("Error reading entry: {}", e));
+                    }
+                }
+            }
+        }
+        Err(e) => return Err(format!("Invalid glob pattern: {}", e)),
+    }
+
+    Ok(files)
 }
+
+fn format_file_name(file_name: &str) -> Option<String> {
+    if let Some(stripped) = file_name.strip_suffix(".json") {
+        let parts: Vec<&str> = stripped.split('T').collect();
+        if parts.len() == 2 {
+            let date = parts[0];
+            let time = parts[1].replace("-", ":");
+            return Some(format!("{} {}", date, time));
+        }
+    }
+    None
+}
+
+#[tauri::command]
+fn unformat_file_name(formatted_name: &str) -> Option<String> {
+    let parts: Vec<&str> = formatted_name.split(' ').collect();
+    if parts.len() == 2 {
+        let date = parts[0];
+        let time = parts[1].replace(":", "-");
+        return Some(format!("{}T{}.json", date, time));
+    }
+    None
+}
+
 
 #[tauri::command]
 fn get_project() -> Option<Project> {
@@ -105,18 +155,31 @@ fn get_documents_folder() -> String {
         .unwrap()
         .to_string()
 }
-/*this one worked--------------------------------------------------------------
+
 #[tauri::command]
-async fn show_save_dialog() {
-    let test: &str = "Test";
-    println!("{}", test);
-    dialog::FileDialogBuilder::default()
-        .add_filter("Markdown", &["md"])
-        .pick_file(|path_buf| match path_buf {
-            Some(p) => {}
-            _ => {}
-        });
-}*/
+fn extract_div_contents(input: &str) -> Vec<String> {
+    // Initialize an empty vector to store the extracted contents
+    let mut result = Vec::new();
+
+    // Define the start and end tag strings
+    let start_tag = "<div>";
+    let end_tag = "</div>";
+
+    // Split the input string by the start tag
+    let parts: Vec<&str> = input.split(start_tag).collect();
+
+    // Iterate over the parts and extract the contents between the start and end tags
+    for part in parts {
+        if let Some(end_index) = part.find(end_tag) {
+            if part.contains("<br>") {
+            } else {
+                let content = &part[..end_index];
+                result.push(content.to_string());
+            }
+        }
+    }
+    result
+}
 
 // Definiere eine globale Variable für die Startzeit
 // lazy_static! {
@@ -198,6 +261,8 @@ fn write_to_file(path: &str, content: &str) {
             return;
         }
     };
+
+    println!("{:?}", content.clone());
 
     // Write the content to the file
     match write!(file, "{content}") {

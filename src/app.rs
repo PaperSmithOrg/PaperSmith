@@ -1,21 +1,25 @@
 use gloo::utils::document;
 use gloo_timers::callback::Timeout;
-use serde::Serialize;
+use pulldown_cmark::{html, Options, Parser};
+use serde::{Serialize, Deserialize};
 use serde_wasm_bindgen::to_value;
 use sidebar::buttons::Button;
+use statistic::StatisticWindow;
+use statistic::_CharCountProps::closing_callback;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlDocument;
 use web_sys::HtmlElement;
+use web_sys::Node;
+use yew::events::InputEvent;
 use yew::events::MouseEvent;
 use yew::prelude::*;
 use yew_icons::IconId;
 
 use shared::Settings;
 
-// use settings::switch_theme;
 
 #[path = "notepad/notepad.rs"]
 mod notepad;
@@ -24,6 +28,8 @@ use notepad::Notepads;
 #[path = "toolbar/toolbar.rs"]
 mod toolbar;
 use toolbar::Toolbar;
+use yew_hooks::use_interval;
+use std::path::PathBuf;
 
 // #[path = "theme-switcher/switcher.rs"]
 // mod switcher;
@@ -41,6 +47,10 @@ use text_styling_handlers::TextStylingControls;
 mod statistic;
 use statistic::Statistics;
 
+//#[path = "text_alignment_handlers.rs"]
+//mod text_alignment_handlers;
+//use text_alignment_handlers::TextAlignmentControls;
+
 #[path = "sidebar/sidebar.rs"]
 mod sidebar;
 use shared::Project;
@@ -53,6 +63,7 @@ use wizard::ProjectWizard;
 #[path = "modal-system/modal.rs"]
 mod modal;
 use modal::Modal;
+use modal::VerticalModal;
 
 #[path = "settings-menu/settings.rs"]
 mod settings;
@@ -64,28 +75,39 @@ extern "C" {
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
 }
 
-#[derive(Serialize)]
-struct SaveFileArgs {
-    content: String,
-    filename: String,
+#[derive(Properties, PartialEq)]
+pub struct WordCountProps {
+    pub pages_ref: NodeRef,
 }
+
 
 #[derive(Serialize)]
 pub struct PathArgs {
     pub path: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct FileWriteData {
+    pub path: String,
+    pub content: String
+}
+
+// #[derive(Properties, PartialEq)]
+// pub struct StatisticProps {
+//     pub statistics: StatisticProp,
+// }
+
 #[function_component(App)]
 pub fn app() -> Html {
     let project: UseStateHandle<Option<Project>> = use_state(|| None);
     let sidebar = use_state(|| {
         html! {
-            <>
-                <div class="text-lg">{ "No Project Loaded" }</div>
-            </>
+            <div class="text-lg">{ "No Project Loaded" }</div>
         }
     });
     let modal = use_state(|| html!());
+
+    let project_path = project.as_ref().map(|proj| proj.path.clone());
     let text_input_ref = use_node_ref();
     let pages_ref = use_node_ref();
     
@@ -95,28 +117,75 @@ pub fn app() -> Html {
         });
     }
 
-    let save = {
+    let save_fn = {
         let text_input_ref = text_input_ref.clone();
+        let project_path = project_path.clone();
+        let modal = modal.clone();
+
         Callback::from(move |_| {
             let text_input_ref = text_input_ref.clone();
+            let project_path = project_path.clone();
+            let modal = modal.clone();
+
             spawn_local(async move {
                 if let Some(input_element) = text_input_ref.cast::<HtmlElement>() {
                     let text = input_element.inner_text();
-                    let result: Option<String> =
-                        invoke("show_save_dialog", JsValue::NULL).await.as_string();
-                    if let Some(path) = result {
-                        let save_args = SaveFileArgs {
+
+                    if let Some(mut path) = project_path {
+                        path.push("Chapters");
+                        path.push("Beginning");
+                        path.push("Content.md");
+
+                        let write_data = FileWriteData {
+                            path: path.to_string_lossy().to_string(),
                             content: text,
-                            filename: path.clone(),
                         };
 
-                        let args = to_value(&save_args).unwrap();
-                        invoke("save_file", args).await;
+                        invoke(
+                            "write_to_file",
+                            serde_wasm_bindgen::to_value(&write_data).unwrap(),
+                        )
+                        .await;
+
+                        modal.set(html! {
+                            /*
+                            <Modal
+                                content={html! {
+                                    <div>{ "Successfully saved" }</div>
+                                }}
+                                button_configs={
+                                    vec![
+                                        ModalButtonProps {
+                                            text: "Close".to_string(),
+                                            text_color: "white".to_string(),
+                                            bg_color: "green".to_string(),
+                                            callback: {
+                                                let modal = modal.clone();
+                                                Callback::from(move |_| modal.set(html!()))
+                                            }
+                                        }
+                                    ]
+                                }
+                            />
+                            */
+                        });
                     }
                 }
             });
         })
     };
+
+    let save = {
+        let save_fn = save_fn.clone();
+        Callback::from(move |_| save_fn.emit(()))
+    };
+
+    {
+        let save = save_fn.clone();
+        use_interval(move || {
+            save.emit(());
+        }, 300_000); // 300,000 ms = 5 minutes
+    }
 
     let open_modal = {
         let modal = modal.clone();
@@ -125,14 +194,33 @@ pub fn app() -> Html {
             modal.set(html! {
                 <Modal
                     content={html! {
-                    <ProjectWizard
+                        <ProjectWizard
+                            closing_callback={
+                                let modal = modal.clone();
+                                Callback::from(move |_| modal.set(html!()))
+                            }
+                            project_ref={project.clone()}
+                        />
+                    }}
+                />
+            });
+        })
+    };
 
-                        closing_callback={
-                            let modal = modal.clone();
-                            Callback::from(move |_| modal.set(html!()))
-                        }
-                        project_ref={project.clone()}
-                    />
+    let open_statistics = {
+        let modal = modal.clone();
+        let pages_ref = pages_ref.clone();
+        Callback::from(move |_| {
+            modal.set(html! {
+                <VerticalModal
+                    content={html! {
+                        <StatisticWindow
+                            closing_callback={
+                                let modal = modal.clone();
+                                Callback::from(move |_| modal.set(html!()))
+                            }
+                            pages_ref={pages_ref.clone()}
+                        />
                     }}
                 />
             });
@@ -157,26 +245,27 @@ pub fn app() -> Html {
         })
     };
 
+
     {
         let sidebar = sidebar.clone();
         let project = project.clone();
         let text_input_ref = text_input_ref.clone();
         use_effect_with(project.clone(), move |_| {
-            if (*project).is_none() {
+            if project.is_none() {
                 sidebar.set(html! {
                     <div class="cursor-default select-none text-lg">{ "No Project Loaded" }</div>
                 });
             } else {
                 sidebar.set(
-                    html! { <SideBar project={project.clone()} input_ref={text_input_ref} /> },
+                    html! { <SideBar project={project.clone()} input_ref={text_input_ref.clone()} /> },
                 );
             }
         });
-    };
+    }
 
     let on_load = {
-        //let project = project.clone();
-        Callback::from(move |_: MouseEvent| {
+        let project = project.clone();
+        Callback::from(move |_| {
             let project = project.clone();
             spawn_local(async move {
                 let project_jsvalue = invoke("get_project", JsValue::null()).await;
@@ -189,22 +278,15 @@ pub fn app() -> Html {
         })
     };
 
-    let on_undo = Callback::from(move |_: MouseEvent| {
+    let on_undo = Callback::from(move |_| {
         let html_doc: HtmlDocument = document().dyn_into().unwrap();
         html_doc.exec_command("undo").unwrap();
     });
 
-    let on_redo = Callback::from(move |_: MouseEvent| {
+    let on_redo = Callback::from(move |_| {
         let html_doc: HtmlDocument = document().dyn_into().unwrap();
         html_doc.exec_command("redo").unwrap();
     });
-
-    //let print_project = {
-    //    Callback::from(move |_| {
-    //        let project = project.clone();
-    //        gloo_console::log!(format!("{}", project.as_ref().unwrap()));
-    //    })
-    //};
 
     html! {
         <div class="h-screen w-screen flex flex-col">
@@ -237,9 +319,17 @@ pub fn app() -> Html {
                 class="h-3 justify-between items-center flex p-2 bg-crust border-solid border-t-[2px] border-x-0 border-b-0 border-text"
             >
                 <div class="bottombar-left">
-                    <Statistics pages_ref={pages_ref.clone()} />
+                    <Statistics
+                        closing_callback={
+                            let modal = modal.clone();
+                            Callback::from(move |_| modal.set(html!()))
+                        }
+                        pages_ref={pages_ref.clone()}
+                    />
                 </div>
-                <div class="bottombar-right" />
+                <div class="bottombar-right">
+                <Button callback={open_statistics} icon={IconId::LucideBarChart3} title="Statistics" size=1.5/>
+                </div>
             </div>
         </div>
     }

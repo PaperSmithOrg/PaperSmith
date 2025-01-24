@@ -16,6 +16,7 @@ web-sys = { version = "0.3.69", features = [
   "HtmlSelectElement",
   "CssStyleDeclaration",
   "HtmlDocument",
+  "HtmlSelectElement",
   "console",
   "Document",
   "Node",
@@ -58,6 +59,7 @@ yew_icons = { version = "0.8", features = [
   "LucideZoomIn",
   "LucideZoomOut",
   "FontAwesomeSolidSwatchbook",
+  "LucideBarChart3",
 ] }
 gloo-timers = "0.3.0"
 yew-hooks = "0.3.2"
@@ -68,6 +70,8 @@ pulldown-cmark = "0.12.2"
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 gloo = "0.11.0"
 lazy_static = "1.4"
+log = "0.4"
+regex = "1.11.1"
 
 [workspace]
 members = ["shared", "src-tauri"]
