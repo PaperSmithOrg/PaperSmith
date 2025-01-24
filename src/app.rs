@@ -1,25 +1,18 @@
+use std::rc::Rc;
+
 use gloo::utils::document;
-use pulldown_cmark::{html, Options, Parser};
-use serde::{Serialize, Deserialize};
-use serde_wasm_bindgen::to_value;
-use sidebar::buttons::Button;
-use statistic::StatisticWindow;
-use statistic::_CharCountProps::closing_callback;
+use serde::{Deserialize, Serialize};
+use shared::Project;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlDocument;
 use web_sys::HtmlElement;
-use web_sys::Node;
-use yew::events::InputEvent;
-use yew::events::MouseEvent;
 use yew::prelude::*;
+use yew_hooks::use_interval;
 use yew_icons::IconId;
-
-
-
-
+use yewdux::prelude::*;
 
 #[path = "notepad/notepad.rs"]
 mod notepad;
@@ -28,8 +21,6 @@ use notepad::Notepads;
 #[path = "toolbar/toolbar.rs"]
 mod toolbar;
 use toolbar::Toolbar;
-use yew_hooks::use_interval;
-use std::path::PathBuf;
 
 #[path = "theme-switcher/switcher.rs"]
 mod switcher;
@@ -45,6 +36,7 @@ use text_styling_handlers::TextStylingControls;
 
 #[path = "statistics/statistic.rs"]
 mod statistic;
+use statistic::StatisticWindow;
 use statistic::Statistics;
 
 //#[path = "text_alignment_handlers.rs"]
@@ -53,8 +45,8 @@ use statistic::Statistics;
 
 #[path = "sidebar/sidebar.rs"]
 mod sidebar;
-use shared::Project;
-use sidebar::SideBar;
+use sidebar::buttons::Button;
+use sidebar::SideBarWrapper;
 
 #[path = "project-wizard/wizard.rs"]
 mod wizard;
@@ -79,7 +71,12 @@ pub struct WordCountProps {
 #[derive(Serialize, Deserialize)]
 pub struct FileWriteData {
     pub path: String,
-    pub content: String
+    pub content: String,
+}
+
+#[derive(Default, Clone, PartialEq, Eq, Store, Debug)]
+pub struct State {
+    project: Option<Project>,
 }
 
 // #[derive(Properties, PartialEq)]
@@ -89,15 +86,10 @@ pub struct FileWriteData {
 
 #[function_component(App)]
 pub fn app() -> Html {
-    let project: UseStateHandle<Option<Project>> = use_state(|| None);
-    let sidebar = use_state(|| {
-        html! {
-            <div class="text-lg">{ "No Project Loaded" }</div>
-        }
-    });
+    let (state, dispatch) = use_store::<State>();
     let modal = use_state(|| html!());
 
-    let project_path = project.as_ref().map(|proj| proj.path.clone());
+    let project_path = state.project.as_ref().map(|proj| proj.path.clone());
     let text_input_ref = use_node_ref();
     let pages_ref = use_node_ref();
 
@@ -117,6 +109,7 @@ pub fn app() -> Html {
 
                     if let Some(mut path) = project_path {
                         path.push("Chapters");
+                        // TODO: change to use active chapter name
                         path.push("Beginning");
                         path.push("Content.md");
 
@@ -166,14 +159,16 @@ pub fn app() -> Html {
 
     {
         let save = save_fn.clone();
-        use_interval(move || {
-            save.emit(());
-        }, 300_000); // 300,000 ms = 5 minutes
+        use_interval(
+            move || {
+                save.emit(());
+            },
+            300_000,
+        ); // 300,000 ms = 5 minutes
     }
 
     let open_modal = {
         let modal = modal.clone();
-        let project = project.clone();
         Callback::from(move |_| {
             modal.set(html! {
                 <Modal
@@ -183,7 +178,6 @@ pub fn app() -> Html {
                                 let modal = modal.clone();
                                 Callback::from(move |_| modal.set(html!()))
                             }
-                            project_ref={project.clone()}
                         />
                     }}
                 />
@@ -211,33 +205,17 @@ pub fn app() -> Html {
         })
     };
 
-    {
-        let sidebar = sidebar.clone();
-        let project = project.clone();
-        let text_input_ref = text_input_ref.clone();
-        use_effect_with(project.clone(), move |_| {
-            if project.is_none() {
-                sidebar.set(html! {
-                    <div class="cursor-default select-none text-lg">{ "No Project Loaded" }</div>
-                });
-            } else {
-                sidebar.set(
-                    html! { <SideBar project={project.clone()} input_ref={text_input_ref.clone()} /> },
-                );
-            }
-        });
-    }
-
     let on_load = {
-        let project = project.clone();
         Callback::from(move |_| {
-            let project = project.clone();
+            let dispatch = dispatch.clone();
             spawn_local(async move {
                 let project_jsvalue = invoke("get_project", JsValue::null()).await;
                 let project_or_none: Option<Project> =
                     serde_wasm_bindgen::from_value(project_jsvalue).unwrap();
                 if project_or_none.is_some() {
-                    project.set(project_or_none);
+                    dispatch.set(State {
+                        project: project_or_none,
+                    });
                 }
             });
         })
@@ -271,7 +249,7 @@ pub fn app() -> Html {
             </div>
             <div id="main_content" class="flex flex-grow m-3">
                 <div class="flex flex-col min-w-[18rem] overflow-y-auto bg-crust">
-                    <div class="flex-grow">{ (*sidebar).clone() }</div>
+                    <div class="flex-grow"> {html!{<SideBarWrapper input_ref={text_input_ref.clone()} />}}</div>
                     <div class="bottom-5 left-2 right-2">
                         <ThemeSwitcher />
                     </div>

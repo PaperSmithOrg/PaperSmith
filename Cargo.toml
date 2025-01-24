@@ -69,6 +69,7 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 gloo = "0.11.0"
 log = "0.4"
 regex = "1.11.1"
+yewdux = "0.10.0"
 
 [workspace]
 members = ["shared", "src-tauri"]

@@ -2,6 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use chrono::{DateTime, Utc};
+use glob::glob;
+use gloo::console::log;
 use lazy_static::lazy_static;
 use rfd::FileDialog;
 use saving::create_empty_file;
@@ -11,8 +13,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Mutex;
-use glob::glob;
-use gloo::console::log;
 
 mod loader;
 use loader::parse_project;
@@ -82,7 +82,6 @@ fn open_explorer(path: String) {
     }
 }
 
-
 #[tauri::command]
 fn list_statistic_files() -> Result<Vec<String>, String> {
     let mut path = get_data_dir();
@@ -100,7 +99,6 @@ fn list_statistic_files() -> Result<Vec<String>, String> {
                             let original_name = file_name.to_string_lossy();
                             if let Some(formatted_name) = format_file_name(&original_name) {
                                 files.push(formatted_name);
-                                
                             } else {
                                 eprintln!("Unrecognized file name format: {}", original_name);
                             }
@@ -141,7 +139,6 @@ fn unformat_file_name(formatted_name: &str) -> Option<String> {
     }
     None
 }
-
 
 #[tauri::command]
 fn get_project() -> Option<Project> {
@@ -228,7 +225,12 @@ fn write_to_file(path: &str, content: &str) {
         }
     }
 
-    let mut file = match OpenOptions::new().write(true).truncate(true).create(true).open(path) {
+    let mut file = match OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(path)
+    {
         Ok(f) => f,
         Err(e) => {
             eprintln!("Failed to open or create the file: {e:?}");
@@ -244,3 +246,4 @@ fn write_to_file(path: &str, content: &str) {
         Err(e) => eprintln!("Failed to write to file: {e:?}"),
     }
 }
+

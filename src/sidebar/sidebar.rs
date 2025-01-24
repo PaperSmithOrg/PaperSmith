@@ -4,12 +4,12 @@ use buttons::Button;
 use deleting::get_delete_callback;
 use serde_wasm_bindgen::to_value;
 use shared::Chapter;
-use shared::Project;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
 use yew_icons::IconId;
+use yewdux::prelude::*;
 
 #[path = "renaming.rs"]
 mod renaming;
@@ -31,10 +31,10 @@ pub use buttons::{ButtonContainer, Props as ButtonProps};
 
 use crate::app::invoke;
 use crate::app::wizard::PathArgs;
+use crate::app::State;
 
 #[derive(Properties, PartialEq)]
 pub struct SideBarProps {
-    pub project: UseStateHandle<Option<Project>>,
     pub input_ref: NodeRef,
 }
 
@@ -47,32 +47,42 @@ fn get_file_name(path: &Path) -> String {
         .to_string()
 }
 
+#[function_component(SideBarWrapper)]
+pub fn sidebarwrapper(props: &SideBarProps) -> Html {
+    let (state, _dispatch) = use_store::<State>();
+    if state.project.is_none() {
+        html! {}
+    } else {
+        html! { <SideBar input_ref={props.input_ref.clone()}/>}
+    }
+}
 #[function_component(SideBar)]
-pub fn sidebar(SideBarProps { project, input_ref }: &SideBarProps) -> Html {
+pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
+    let (state, dispatch) = use_store::<State>();
     let rename_input_ref = use_node_ref();
-    let title = use_state(|| get_file_name(&(*project).as_ref().unwrap().path));
+    let title = use_state(|| get_file_name(&(state.project).as_ref().unwrap().path));
     let name_display = use_state(|| html! { (*title).clone() });
     let chapters = use_state(Vec::<VNode>::new);
 
     {
         let title = title.clone();
-        let project = project.clone();
         let name_display = name_display.clone();
-        use_effect_with(project.clone(), move |_| {
-            title.set(get_file_name(&(*project).as_ref().unwrap().path));
-            name_display.set(html! { get_file_name(&(*project).as_ref().unwrap().path) });
+        let state = state.clone();
+        use_effect_with(state.clone(), move |_| {
+            title.set(get_file_name(&(state.project).as_ref().unwrap().path));
+            name_display.set(html! { get_file_name(&(state.project).as_ref().unwrap().path) });
         });
     }
 
     {
         let chapters = chapters.clone();
-        let project = (*project).clone();
         let input_ref = input_ref.clone();
 
-        use_effect_with((*project).clone(), move |_| {
+        let state = state.clone();
+        use_effect_with(state.clone(), move |_| {
             chapters.set(Vec::new());
 
-            if let Some(project_data) = project.as_ref() {
+            if let Some(project_data) = state.project.as_ref() {
                 let new_chapters = project_data
                     .chapters
                     .iter()
@@ -83,7 +93,6 @@ pub fn sidebar(SideBarProps { project, input_ref }: &SideBarProps) -> Html {
                                 key={chapter.name.clone()}
                                 chapter={chapter.clone()}
                                 index={index}
-                                project={project.clone()}
                                 input_ref={input_ref.clone()}
                             />
                         }
@@ -96,11 +105,13 @@ pub fn sidebar(SideBarProps { project, input_ref }: &SideBarProps) -> Html {
     }
 
     let on_add_chapter = {
-        let project = project.clone();
+        let state = state.clone();
+        let dispatch = dispatch.clone();
         Callback::from(move |_| {
-            let project = project.clone();
+            let state = state.clone();
+            let dispatch = dispatch.clone();
             spawn_local(async move {
-                let mut check_path = project.as_ref().unwrap().path.clone();
+                let mut check_path = state.project.as_ref().unwrap().path.clone();
                 check_path.push("Chapters");
                 check_path.push("Untitled");
                 let mut index = 1;
@@ -128,13 +139,15 @@ pub fn sidebar(SideBarProps { project, input_ref }: &SideBarProps) -> Html {
                     .unwrap(),
                 )
                 .await;
-                let mut temp_project = project.as_ref().unwrap().clone();
+                let mut temp_project = state.project.as_ref().unwrap().clone();
                 temp_project.chapters.push(Chapter {
                     name: check_path.file_name().unwrap().to_string_lossy().into(),
                     notes: Vec::new(),
                     extras: Vec::new(),
                 });
-                project.set(Some(temp_project));
+                dispatch.set(State {
+                    project: Some(temp_project),
+                });
             });
         })
     };
@@ -145,7 +158,8 @@ pub fn sidebar(SideBarProps { project, input_ref }: &SideBarProps) -> Html {
                 name_display.clone(),
                 title,
                 rename_input_ref.clone(),
-                project.clone(),
+                state,
+                dispatch,
                 RenameKind::Book,
                 None,
             ),
@@ -196,7 +210,6 @@ pub fn sidebar(SideBarProps { project, input_ref }: &SideBarProps) -> Html {
 struct ChapterProps {
     pub chapter: Chapter,
     pub index: usize,
-    pub project: UseStateHandle<Option<Project>>,
     pub input_ref: NodeRef,
 }
 
@@ -205,10 +218,10 @@ fn chapter(
     ChapterProps {
         chapter,
         index,
-        project,
         input_ref,
     }: &ChapterProps,
 ) -> Html {
+    let (state, _dispatch) = use_store::<State>();
     let note_elements: Vec<Html> = chapter
         .notes
         .iter()
@@ -217,19 +230,18 @@ fn chapter(
                 <Entry
                     key={note.clone()}
                     name={note.clone()}
-                    project={project.clone()}
                     chapter_index={index}
                 />
             }
         })
         .collect();
     let on_extras = {
-        let project = project.clone();
         let index = *index;
+        let state = state.clone();
         Callback::from(move |_| {
-            let project = project.clone();
+            let state = state.clone();
             spawn_local(async move {
-                let project_clone = project.as_ref().unwrap().clone();
+                let project_clone = state.project.as_ref().unwrap().clone();
                 let mut extras_path = project_clone.path.clone();
                 extras_path.push("Chapters");
                 extras_path.push(project_clone.chapters[index].name.clone());
@@ -246,7 +258,7 @@ fn chapter(
         })
     };
 
-    let mut content_path = (*project).as_ref().unwrap().path.clone();
+    let mut content_path = (state.project).as_ref().unwrap().path.clone();
     content_path.push("Chapters");
     content_path.push(chapter.name.clone());
     content_path.push("Content");
@@ -283,7 +295,6 @@ fn chapter(
             title={chapter.name.clone()}
             open=false
             dropdown_type={Type::Chapter}
-            project={project.clone()}
         >
             <Title onclick={on_load}>
                 <div class="pl-5">{ "Contents" }</div>
@@ -292,7 +303,6 @@ fn chapter(
                 title="Notes"
                 open=false
                 dropdown_type={Type::Notes}
-                project={Some(project.clone())}
                 chapter_index={index}
             >
                 { for note_elements }
@@ -307,7 +317,6 @@ fn chapter(
 #[derive(Properties, PartialEq)]
 pub struct EntryProps {
     pub name: String,
-    pub project: UseStateHandle<Option<Project>>,
     pub chapter_index: usize,
 }
 
@@ -315,10 +324,10 @@ pub struct EntryProps {
 fn entry(
     EntryProps {
         name,
-        project,
         chapter_index,
     }: &EntryProps,
 ) -> Html {
+    let (state, dispatch) = use_store::<State>();
     let input_ref = use_node_ref();
     let title = use_state(|| name.clone());
     let name_display = use_state(|| html! { name.clone() });
@@ -329,7 +338,8 @@ fn entry(
                 name_display.clone(),
                 title,
                 input_ref,
-                project.clone(),
+                state.clone(),
+                dispatch.clone(),
                 RenameKind::Note,
                 Some(*chapter_index),
             ),
@@ -339,7 +349,8 @@ fn entry(
         },
         ButtonProps {
             callback: get_delete_callback(
-                project.clone(),
+                state,
+                dispatch,
                 name.clone(),
                 Some(*chapter_index),
                 RenameKind::Note,

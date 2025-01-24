@@ -1,10 +1,10 @@
 use gloo_timers::callback::Timeout;
 use serde_wasm_bindgen::to_value;
-use shared::Project;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew_icons::IconId;
+use yewdux::{dispatch, prelude::*};
 
 #[path = "chevron.rs"]
 mod chevron;
@@ -19,6 +19,7 @@ use crate::app::{
         Title,
     },
     wizard::PathArgs,
+    State,
 };
 
 #[derive(Properties, PartialEq)]
@@ -27,7 +28,6 @@ pub struct Props {
     pub open: bool,
     pub children: Html,
     pub dropdown_type: Type,
-    pub project: Option<UseStateHandle<Option<Project>>>,
     #[prop_or(None)]
     pub chapter_index: Option<usize>,
 }
@@ -45,10 +45,10 @@ pub fn dropdown(
         open,
         dropdown_type,
         children,
-        project,
         chapter_index,
     }: &Props,
 ) -> Html {
+    let (state, dispatch) = use_store::<State>();
     let transition_string = use_state(|| "max-height: 0px".to_string());
     let content_ref = use_node_ref();
     let chevron2_hidden = use_state(|| true);
@@ -110,19 +110,21 @@ pub fn dropdown(
     let on_rename;
     let on_delete;
     let on_add_note;
-    if let Some(unwrapped_project) = project.clone() {
+    if let Some(unwrapped_project) = state.project.clone() {
         match dropdown_type {
             Type::Chapter => {
                 on_rename = get_rename_callback(
                     name_display.clone(),
                     title.clone(),
                     input_ref,
-                    unwrapped_project.clone(),
+                    state.clone(),
+                    dispatch.clone(),
                     RenameKind::Chapter,
                     None,
                 );
                 on_delete = get_delete_callback(
-                    unwrapped_project,
+                    state,
+                    dispatch,
                     (*title).clone(),
                     None,
                     RenameKind::Chapter,
@@ -139,16 +141,16 @@ pub fn dropdown(
                     Callback::from(move |e: MouseEvent| {
                         e.stop_propagation();
                         let unwrapped_project = unwrapped_project.clone();
+                        let dispatch = dispatch.clone();
                         let chevron_rotated = chevron_rotated.clone();
                         let onclick = onclick.clone();
                         spawn_local(async move {
-                            let mut check_path = unwrapped_project.as_ref().unwrap().path.clone();
+                            let mut check_path = unwrapped_project.path.clone();
                             check_path.push("Chapters");
                             check_path.push(
-                                unwrapped_project.as_ref().unwrap().chapters
-                                    [chapter_index.unwrap()]
-                                .name
-                                .clone(),
+                                unwrapped_project.chapters[chapter_index.unwrap()]
+                                    .name
+                                    .clone(),
                             );
                             check_path.push("Notes");
                             check_path.push("Untitled");
@@ -180,11 +182,13 @@ pub fn dropdown(
                             )
                             .await;
                             check_path.set_extension("");
-                            let mut temp_project = unwrapped_project.as_ref().unwrap().clone();
+                            let mut temp_project = unwrapped_project.clone();
                             temp_project.chapters[chapter_index.unwrap()]
                                 .notes
                                 .push(check_path.file_name().unwrap().to_string_lossy().into());
-                            unwrapped_project.set(Some(temp_project));
+                            dispatch.set(State {
+                                project: Some(temp_project),
+                            });
                             if !*chevron_rotated {
                                 onclick.emit(e);
                             }

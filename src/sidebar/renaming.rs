@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use gloo_timers::callback::Timeout;
 use serde::Serialize;
@@ -8,8 +9,9 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew::{virtual_dom::VNode, Callback, MouseEvent, NodeRef, UseStateHandle};
+use yewdux::{dispatch, Dispatch};
 
-use crate::app::invoke;
+use crate::app::{invoke, State};
 
 #[derive(Serialize)]
 struct RenameArgs {
@@ -34,7 +36,8 @@ pub fn get_rename_callback(
     display: UseStateHandle<VNode>,
     title: UseStateHandle<String>,
     input_ref: NodeRef,
-    project: UseStateHandle<Option<Project>>,
+    state: Rc<State>,
+    dispatch: Dispatch<State>,
     kind: RenameKind,
     chapter_index: Option<usize>,
 ) -> Callback<MouseEvent> {
@@ -56,13 +59,15 @@ pub fn get_rename_callback(
             let name_display = display.clone();
             let input_ref = input_ref.clone();
             let title = title.clone();
-            let project = project.clone();
+            let state = state.clone();
+            let dispatch = dispatch.clone();
             Callback::from(move |e: KeyboardEvent| {
                 let kind = kind.clone();
                 let input_ref = input_ref.clone();
                 let name_display = name_display.clone();
                 let title = title.clone();
-                let project = project.clone();
+                let state = state.clone();
+                let dispatch = dispatch.clone();
                 if e.key() == "Enter" {
                     if let Some(input) = input_ref.cast::<HtmlInputElement>() {
                         let value = input.value();
@@ -73,7 +78,7 @@ pub fn get_rename_callback(
                         };
 
                         spawn_local(async move {
-                            let mut path = project.as_ref().unwrap().clone().path;
+                            let mut path = state.project.as_ref().unwrap().clone().path;
                             match kind {
                                 RenameKind::Book => {
                                     path.pop();
@@ -83,7 +88,7 @@ pub fn get_rename_callback(
                                 }
                                 RenameKind::Note => {
                                     path.push("Chapters");
-                                    let chapter_name = project.as_ref().unwrap().chapters
+                                    let chapter_name = state.project.as_ref().unwrap().chapters
                                         [chapter_index.unwrap()]
                                     .name
                                     .clone();
@@ -127,7 +132,8 @@ pub fn get_rename_callback(
                                 invoke("rename_path", args).await;
                                 title.set(value.clone());
                                 name_display.set(html!(<>{ value.clone() }</>));
-                                let mut temp_project = project.clone().as_ref().unwrap().clone();
+                                let mut temp_project =
+                                    state.project.clone().as_ref().unwrap().clone();
                                 match kind {
                                     RenameKind::Book => temp_project.path = check_path,
                                     RenameKind::Chapter => {
@@ -149,7 +155,9 @@ pub fn get_rename_callback(
                                         }
                                     }
                                 }
-                                project.set(Some(temp_project.clone()));
+                                dispatch.set(State {
+                                    project: Some(temp_project.clone()),
+                                });
                             }
                         });
                     }
