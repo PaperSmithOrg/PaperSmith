@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - action-testing
 
 jobs:
   get-version:
@@ -105,48 +104,31 @@ jobs:
       - publish-tauri
       - get-version
     steps:
-      - name: Download Assets
-        run: |
-          mkdir -p assets hashes
-          # Get the release information for the current tag
-          repo="MasterRick1337/PaperSmith"
-          ref_name=$(curl "https://api.github.com/repos/$repo/tags" | jq -r '.[1].name')
-          release_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$repo/releases/tags/$ref_name")
+      - name: Generate Hashes
+        uses: MCJack123/ghaction-generate-release-hashes@v3
+        with:
+          hash-type: md5
+          file-name: hashes.txt
+          get-assets: true
 
-          # Extract asset URLs from the release information
-          echo "$release_info" | jq -r '.assets[] | .browser_download_url' | while read asset_url; do
-            if [[ ! "$asset_url" =~ \.sum$ ]]; then
-              wget "$asset_url" -P assets/
-            else
-              echo "skipping $asset_url"
-            fi
-          done
-
-      - name: Generate Individual Hash Files
+      - name: debug hashes output
         run: |
-          for file in assets/*; do
-            sha256sum "$file" | awk '{print $1}' > "hashes/$(basename "$file").sum"
-          done
-      - name: get version
-        id: get_version
-        run: |
-          version=$(curl "https://api.github.com/repos/MasterRick1337/PaperSmith/tags" | jq -r '.[1].name')
-          echo "version=$version" >> $GITHUB_OUTPUT
+          cat hashes.txt
 
       - name: get version number
         id: get_version_number
-        run: |
-          version_number=$(version_number=$(curl  "https://api.github.com/repos/MasterRick1337/PaperSmith/tags" | jq -r '.[1].name'); echo ${version_number:4})
-          echo "version_number=$version_number" >> $GITHUB_OUTPUT
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          repository: ${{ github.repository }}
 
       - name: Upload Release with MD5 Files
         uses: softprops/action-gh-release@v2.0.8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: "App ${{ steps.get_version_number.outputs.version_number }}"
+          name: "App ${{ steps.get_version_number.outputs.release }}"
           body: "See the assets to download this version and install."
-          tag_name: ${{ steps.get_version.outputs.version }}
+          tag_name: app-${{ steps.get_version_number.outputs.release }}
           draft: false
           prerelease: true
           files: |
