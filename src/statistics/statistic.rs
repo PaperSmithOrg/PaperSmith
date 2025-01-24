@@ -297,7 +297,7 @@ pub fn StatisticWindow(
             .iter()
             .map(|file| {
                 html! {
-                    <option value={file.clone()}>
+                    <option class="bg-mantle" value={file.clone()}>
                         { file }
                     </option>
                 }
@@ -307,41 +307,40 @@ pub fn StatisticWindow(
 
     html! {
         <>
-            <div class="absolute top-0 left-0 z-50 bg-black/60 h-full w-full flex items-center justify-center text-text">
-                <div class="bg-base rounded-lg max-w-[30%] min-w-[30%] max-h-[50%] min-h-[50%] p-8 flex flex-col justify-between">
-                    <div>
-                        <label for="file-select" class="bg-base block text-text font-medium mb-2">{"Select a file"}</label>
-                        <select
-                            ref={select_ref}
-                            class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
-                            onchange={onchange}
-                        >
-                            <option value="">{"-- Select --"}</option>
-                            {
-                                files_to_html((*files).clone())
-                            }
-                        </select>
-                    </div>
+        <div class="absolute top-0 left-0 z-50 bg-mantle/70 h-full w-full flex items-center justify-center text-text">
+        <div class="bg-base rounded-lg max-w-[30%] min-w-[30%] max-h-[50%] min-h-[50%] p-8 flex flex-col justify-between">
+            <div>
+                <label for="file-select" class="block text-text font-medium mb-2">{"Select a file"}</label>
+                <select
+                    ref={select_ref}
+                    class="bg-primary rounded-lg text-text focus:ring-accent border border-primary p-2 w-full"
+                    onchange={onchange}
+                >
+                    {
+                        files_to_html((*files).clone())
+                    }
+                </select>
+            </div>
 
-                    <div class="mt-4">
-                        <label class="block text-white-700 font-medium mb-2">{"File Content"}</label>
-                            <div class="bg-gray-200 p-4 rounded-lg">
-                            { 
-                                if !(*file_content).is_empty() {
-                                    html! { <pre class="text-black whitespace-pre-wrap">{ &*file_content }</pre> }
-                                } else {
-                                    html! { <p class="text-black">{"No content to display."}</p> }
-                                }
+                <div class="mt-4">
+                    <label class="block text-subtext font-medium mb-2">{"File Content"}</label>
+                    <div class="bg-mantle p-4 rounded-lg">
+                        { 
+                               if !(*file_content).is_empty() {
+                               html! { <pre class="text-text whitespace-pre-wrap overflow-auto">{ &*file_content }</pre> }
+                            } else {
+                               html! { <p class="text-subtext">{"No content to display."}</p> }
                             }
-                        </div>
+                        }
                     </div>
+                </div>
 
                     <button
-                        onclick={on_close}
-                        class="rounded-lg text-lg px-2 py-1 bg-secondary text-crust hover:scale-105 border-0 transition-transform self-end"
-                    >
-                        { "Close" }
-                    </button>
+                    onclick={on_close}
+                    class="rounded-lg text-lg px-4 py-2 bg-secondary text-crust hover:bg-accent hover:scale-105 border-0 transition-transform self-end shadow-md"
+                >
+                    { "Close" }
+                   </button>
                 </div>
             </div>
         </>
