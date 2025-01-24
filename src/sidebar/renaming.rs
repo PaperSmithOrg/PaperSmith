@@ -169,7 +169,7 @@ pub fn get_rename_callback(
                 onblur={onblur}
                 onkeypress={onenter}
                 ref={input_ref.clone()}
-                class="text-inherit bg-inherit rounded-lg text-[length:inherit] m-0 border-0 p-0 shadow-none focus:border-0 focus:outline-none font-standard"
+                class="text-inherit bg-inherit h-7 w-40 text-[length:inherit] text-ellipsis whitespace-nowrap m-0 border-0 p-0 shadow-none focus:border-0 focus:outline-none font-standard"
             />
         ));
 
