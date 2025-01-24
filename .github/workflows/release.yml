@@ -94,6 +94,13 @@ jobs:
           release-name: "App v${{ needs.get-version.outputs.version }}"
           tag-name: "app-v${{ needs.get-version.outputs.version }}"
 
+      - name: Generate Hashes
+        uses: MCJack123/ghaction-generate-release-hashes@v3
+        with:
+          hash-type: md5
+          file-name: hashes.txt
+          get-assets: true
+
   generate-hashes:
     permissions:
       contents: write
@@ -104,16 +111,9 @@ jobs:
       - publish-tauri
       - get-version
     steps:
-      - name: Generate Hashes
-        uses: MCJack123/ghaction-generate-release-hashes@v3
-        with:
-          hash-type: md5
-          file-name: hashes.txt
-          get-assets: true
-
       - name: debug hashes output
         run: |
-          cat hashes.txt
+          echo ${{ needs.publish-tauri.outputs.hashes }}
 
       - name: get version number
         id: get_version_number
