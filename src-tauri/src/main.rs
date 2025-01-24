@@ -3,8 +3,10 @@
 
 use chrono::{DateTime, Utc};
 use glob::glob;
-use gloo::console::log;
 use lazy_static::lazy_static;
+use loader::write_project_config;
+use log::info;
+use log::warn;
 use rfd::FileDialog;
 use saving::create_empty_file;
 use std::fs;
@@ -48,18 +50,20 @@ fn main() {
             create_empty_file,
             get_file_content,
             list_statistic_files,
+            write_project_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 #[tauri::command]
 fn get_file_content(path: String) -> String {
-    let pathbuf = PathBuf::from(path.clone());
-    println!("{}", path.clone());
-    if pathbuf.exists() & pathbuf.is_file() {
-        fs::read_to_string(path).expect("Should have been able to read the file")
-    } else {
-        String::new()
+    info!("Reading file: {path}");
+    match fs::read_to_string(path) {
+        Ok(string) => string,
+        Err(e) => {
+            warn!("Error reading file: {e}");
+            String::new()
+        }
     }
 }
 
@@ -246,4 +250,3 @@ fn write_to_file(path: &str, content: &str) {
         Err(e) => eprintln!("Failed to write to file: {e:?}"),
     }
 }
-

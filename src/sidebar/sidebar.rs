@@ -53,7 +53,7 @@ pub fn sidebarwrapper(props: &SideBarProps) -> Html {
     if state.project.is_none() {
         html! {}
     } else {
-        html! { <SideBar input_ref={props.input_ref.clone()}/>}
+        html! { <SideBar input_ref={props.input_ref.clone()} /> }
     }
 }
 #[function_component(SideBar)]
@@ -94,6 +94,7 @@ pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
                                 chapter={chapter.clone()}
                                 index={index}
                                 input_ref={input_ref.clone()}
+                                active={project_data.active_chapter == Some(index)}
                             />
                         }
                     })
@@ -197,7 +198,7 @@ pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
                     </div>
                 </div>
                 <div
-                class="text-lg border-l-2 border-r-0 border-y-0 border-solid border-text pl-2 ml-2"
+                    class="text-lg border-l-2 border-r-0 border-y-0 border-solid border-text pl-2 ml-2"
                 >
                     { for (*chapters).clone() }
                 </div>
@@ -211,6 +212,7 @@ struct ChapterProps {
     pub chapter: Chapter,
     pub index: usize,
     pub input_ref: NodeRef,
+    pub active: bool,
 }
 
 #[function_component(ChapterComponent)]
@@ -219,20 +221,15 @@ fn chapter(
         chapter,
         index,
         input_ref,
+        active,
     }: &ChapterProps,
 ) -> Html {
-    let (state, _dispatch) = use_store::<State>();
+    let (state, dispatch) = use_store::<State>();
     let note_elements: Vec<Html> = chapter
         .notes
         .iter()
         .map(|note| {
-            html! {
-                <Entry
-                    key={note.clone()}
-                    name={note.clone()}
-                    chapter_index={index}
-                />
-            }
+            html! { <Entry key={note.clone()} name={note.clone()} chapter_index={index} /> }
         })
         .collect();
     let on_extras = {
@@ -264,11 +261,27 @@ fn chapter(
     content_path.push("Content");
     content_path.set_extension("md");
     let on_load = {
-        let content_path = content_path.clone();
         let input_ref = input_ref.clone();
+        let chapter = chapter.clone();
+        let state = state.clone();
+
         Callback::from(move |_| {
+            let dispatch = dispatch.clone();
+            let state = state.clone();
             let content_path = content_path.clone();
             let input_ref = input_ref.clone();
+
+            let index = state
+                .project
+                .clone()
+                .unwrap()
+                .chapters
+                .iter()
+                .position(|r| r.name == chapter.name)
+                .unwrap();
+
+            dispatch.reduce_mut(|x| x.project.as_mut().unwrap().active_chapter = Some(index));
+
             spawn_local(async move {
                 let content_path = content_path.clone();
                 let content = invoke(
@@ -295,16 +308,12 @@ fn chapter(
             title={chapter.name.clone()}
             open=false
             dropdown_type={Type::Chapter}
+            accent={active}
         >
             <Title onclick={on_load}>
                 <div class="pl-5">{ "Contents" }</div>
             </Title>
-            <Dropdown
-                title="Notes"
-                open=false
-                dropdown_type={Type::Notes}
-                chapter_index={index}
-            >
+            <Dropdown title="Notes" open=false dropdown_type={Type::Notes} chapter_index={index}>
                 { for note_elements }
             </Dropdown>
             <Title onclick={on_extras}>

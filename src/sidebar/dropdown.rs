@@ -28,6 +28,8 @@ pub struct Props {
     pub open: bool,
     pub children: Html,
     pub dropdown_type: Type,
+    #[prop_or_default]
+    pub accent: bool,
     #[prop_or(None)]
     pub chapter_index: Option<usize>,
 }
@@ -44,6 +46,7 @@ pub fn dropdown(
         title: origininal_title,
         open,
         dropdown_type,
+        accent,
         children,
         chapter_index,
     }: &Props,
@@ -210,9 +213,21 @@ pub fn dropdown(
                 onclick={onclick}
             >
                 <Chevron rotated={*chevron_rotated} hidden=false />
-                <div class="inline-block pl-5 text-ellipsis whitespace-nowrap overflow-hidden">
-                    { (*name_display).clone() }
-                </div>
+                if *accent {
+                    <div
+                        class="flex flex-row items-center pl-5 text-ellipsis whitespace-nowrap overflow-hidden"
+                    >
+                        <div class="w-2 h-2 mr-2 bg-text rounded-full" />
+                        { (*name_display).clone() }
+                    </div>
+                } else {
+                    <div
+                        class="flex flex-row items-center pl-5 text-ellipsis whitespace-nowrap overflow-hidden"
+                    >
+                        <div class="w-2 h-2 mr-2 bg-transparent rounded-full" />
+                        { (*name_display).clone() }
+                    </div>
+                }
             </Title>
             <div
                 class="pl-2 ml-2 border-solid border-l-2 border-r-0 border-y-0 border-text text-subtext2 overflow-hidden cursor-default"

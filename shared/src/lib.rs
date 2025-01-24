@@ -7,7 +7,7 @@ use std::path::PathBuf;
 pub struct Project {
     pub path: PathBuf,
     pub chapters: Vec<Chapter>,
-    pub active_chapter: usize,
+    pub active_chapter: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]

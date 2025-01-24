@@ -79,6 +79,11 @@ pub struct State {
     project: Option<Project>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ProjectProps {
+    project: Project,
+}
+
 // #[derive(Properties, PartialEq)]
 // pub struct StatisticProps {
 //     pub statistics: StatisticProp,
@@ -93,6 +98,22 @@ pub fn app() -> Html {
     let text_input_ref = use_node_ref();
     let pages_ref = use_node_ref();
 
+    use_effect_with(state.clone(), |state| {
+        let state = state.clone();
+        if let Some(project) = state.project.clone() {
+            spawn_local(async move {
+                let _project_jsvalue = invoke(
+                    "write_project_config",
+                    serde_wasm_bindgen::to_value(&ProjectProps {
+                        project: project.clone(),
+                    })
+                    .unwrap(),
+                )
+                .await;
+            });
+        }
+    });
+
     let save_fn = {
         let text_input_ref = text_input_ref.clone();
         let project_path = project_path.clone();
@@ -102,15 +123,27 @@ pub fn app() -> Html {
             let text_input_ref = text_input_ref.clone();
             let project_path = project_path.clone();
             let modal = modal.clone();
+            let state = state.clone();
 
             spawn_local(async move {
+                if state.project.as_ref().unwrap().active_chapter.is_none() {
+                    return;
+                }
                 if let Some(input_element) = text_input_ref.cast::<HtmlElement>() {
                     let text = input_element.inner_text();
 
                     if let Some(mut path) = project_path {
                         path.push("Chapters");
-                        // TODO: change to use active chapter name
-                        path.push("Beginning");
+                        path.push(
+                            &state
+                                .project
+                                .as_ref()
+                                .unwrap()
+                                .chapters
+                                .get(state.project.as_ref().unwrap().active_chapter.unwrap())
+                                .unwrap()
+                                .name,
+                        );
                         path.push("Content.md");
 
                         let write_data = FileWriteData {
