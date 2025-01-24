@@ -1,18 +1,22 @@
-use std::rc::Rc;
-
 use gloo::utils::document;
+use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
 use shared::Project;
+use sidebar::buttons::Button;
+use statistic::StatisticWindow;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlDocument;
 use web_sys::HtmlElement;
+use yew::events::MouseEvent;
 use yew::prelude::*;
 use yew_hooks::use_interval;
 use yew_icons::IconId;
 use yewdux::prelude::*;
+
+use shared::Settings;
 
 #[path = "notepad/notepad.rs"]
 mod notepad;
@@ -21,10 +25,6 @@ use notepad::Notepads;
 #[path = "toolbar/toolbar.rs"]
 mod toolbar;
 use toolbar::Toolbar;
-
-#[path = "theme-switcher/switcher.rs"]
-mod switcher;
-use switcher::ThemeSwitcher;
 
 //#[path = "text_alignment_handlers.rs"]
 //mod text_alignment_handlers;
@@ -36,16 +36,10 @@ use text_styling_handlers::TextStylingControls;
 
 #[path = "statistics/statistic.rs"]
 mod statistic;
-use statistic::StatisticWindow;
 use statistic::Statistics;
-
-//#[path = "text_alignment_handlers.rs"]
-//mod text_alignment_handlers;
-//use text_alignment_handlers::TextAlignmentControls;
 
 #[path = "sidebar/sidebar.rs"]
 mod sidebar;
-use sidebar::buttons::Button;
 use sidebar::SideBarWrapper;
 
 #[path = "project-wizard/wizard.rs"]
@@ -57,6 +51,10 @@ mod modal;
 use modal::Modal;
 use modal::VerticalModal;
 
+#[path = "settings-menu/settings.rs"]
+mod settings;
+use settings::SettingsMenu;
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"])]
@@ -66,6 +64,11 @@ extern "C" {
 #[derive(Properties, PartialEq)]
 pub struct WordCountProps {
     pub pages_ref: NodeRef,
+}
+
+#[derive(Serialize)]
+pub struct PathArgs {
+    pub path: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -84,11 +87,6 @@ pub struct ProjectProps {
     project: Project,
 }
 
-// #[derive(Properties, PartialEq)]
-// pub struct StatisticProps {
-//     pub statistics: StatisticProp,
-// }
-
 #[function_component(App)]
 pub fn app() -> Html {
     let (state, dispatch) = use_store::<State>();
@@ -97,6 +95,12 @@ pub fn app() -> Html {
     let project_path = state.project.as_ref().map(|proj| proj.path.clone());
     let text_input_ref = use_node_ref();
     let pages_ref = use_node_ref();
+
+    {
+        use_effect_with((), move |_| {
+            apply_settings();
+        });
+    }
 
     use_effect_with(state.clone(), |state| {
         let state = state.clone();
@@ -238,6 +242,24 @@ pub fn app() -> Html {
         })
     };
 
+    let open_settings: Callback<MouseEvent> = {
+        let modal = modal.clone();
+        Callback::from(move |_| {
+            modal.set(html! {
+                <Modal
+                    content={html! {
+                    <SettingsMenu
+                        closing_callback={
+                            let modal = modal.clone();
+                            Callback::from(move |_| modal.set(html!()))
+                        }
+                    />
+                    }}
+                />
+            });
+        })
+    };
+
     let on_load = {
         Callback::from(move |_| {
             let dispatch = dispatch.clone();
@@ -271,9 +293,25 @@ pub fn app() -> Html {
             <style id="dynamic-style" />
             <Toolbar />
             <div class="h-12 flex justify-left items-center p-2 bg-crust">
-                <Button callback={open_modal} icon={IconId::LucideFilePlus} title="Create Project" size=1.5 />
-                <Button callback={on_load} icon={IconId::LucideFolderOpen} title="Load Project" size=1.5 />
+                <Button
+                    callback={open_modal}
+                    icon={IconId::LucideFilePlus}
+                    title="Create Project"
+                    size=1.5
+                />
+                <Button
+                    callback={on_load}
+                    icon={IconId::LucideFolderOpen}
+                    title="Load Project"
+                    size=1.5
+                />
                 <Button callback={save} icon={IconId::LucideSave} title="Save" size=1.5 />
+                <Button
+                    callback={open_settings}
+                    icon={IconId::LucideSettings}
+                    title="Open Settings"
+                    size=1.5
+                />
                 <div class="w-[1px] h-[20px] bg-subtext my-0 mx-1 " />
                 <Button callback={on_undo} icon={IconId::LucideUndo} title="Undo" size=1.5 />
                 <Button callback={on_redo} icon={IconId::LucideRedo} title="Redo" size=1.5 />
@@ -282,9 +320,8 @@ pub fn app() -> Html {
             </div>
             <div id="main_content" class="flex flex-grow m-3">
                 <div class="flex flex-col min-w-[18rem] overflow-y-auto bg-crust">
-                    <div class="flex-grow"> {html!{<SideBarWrapper input_ref={text_input_ref.clone()} />}}</div>
-                    <div class="bottom-5 left-2 right-2">
-                        <ThemeSwitcher />
+                    <div class="flex-grow">
+                        { html!{<SideBarWrapper input_ref={text_input_ref.clone()} />} }
                     </div>
                 </div>
                 <Notepads pages_ref={pages_ref.clone()} text_input_ref={text_input_ref} />
@@ -294,41 +331,58 @@ pub fn app() -> Html {
             >
                 <div class="bottombar-left">
                     <Statistics
-                        closing_callback={
-                            let modal = modal.clone();
-                            Callback::from(move |_| modal.set(html!()))
-                        }
+                        closing_callback={let modal = modal.clone();
+                            Callback::from(move |_| modal.set(html!()))}
                         pages_ref={pages_ref.clone()}
                     />
                 </div>
                 <div class="bottombar-right">
-                <Button callback={open_statistics} icon={IconId::LucideBarChart3} title="Statistics" size=1.5/>
+                    <Button
+                        callback={open_statistics}
+                        icon={IconId::LucideBarChart3}
+                        title="Statistics"
+                        size=1.5
+                    />
                 </div>
             </div>
         </div>
     }
 }
 
-/*let save = Callback::from(move |_: MouseEvent| {
-    let args = to_value(&()).unwrap();
-    let ahhh = invoke("show_save_dialog", args).await;
-});*/
+fn apply_settings() {
+    spawn_local(async move {
+        let path_jsvalue = invoke("get_data_dir", JsValue::NULL).await;
 
-/*This one worked----------------------------------------------------------
-let save = {
-    Callback::from(move |_| {
-        spawn_local(async move {
-            let args = to_value(&()).unwrap();
-            let ahhh = invoke("show_save_dialog", args).await;
-        });
-    })
-};*/
+        let mut path = path_jsvalue.as_string().expect("Cast failed").clone();
 
-/*let save = {
-    Callback::from(move |_| {
-        spawn_local(async move {
-            let args = to_value(&()).unwrap();
-            invoke("saveTest", args).await.as_string();
-        });
-    })
-};*/
+        path.push_str("/PaperSmith");
+
+        let settings_jsvalue = invoke(
+            "get_settings",
+            serde_wasm_bindgen::to_value(&PathArgs { path }).unwrap(),
+        )
+        .await;
+
+        let settings_result = serde_wasm_bindgen::from_value::<Settings>(settings_jsvalue);
+
+        let settings = settings_result.unwrap();
+
+        let theme = settings.theme;
+
+        let _ = Timeout::new(10, {
+            let theme = theme.clone();
+
+            move || {
+                switch_theme(theme);
+            }
+        })
+        .forget();
+    });
+}
+
+fn switch_theme(theme: String) {
+    let html_doc: HtmlDocument = document().dyn_into().unwrap();
+    let body = html_doc.body().unwrap();
+    let theme2 = theme.to_lowercase().replace(' ', "");
+    body.set_class_name(format!("{theme2} bg-crust text-text").as_str());
+}

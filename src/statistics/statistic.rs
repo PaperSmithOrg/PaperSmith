@@ -4,21 +4,21 @@ use chrono::prelude::*;
 use js_sys::Array;
 use serde_json::json;
 use serde_wasm_bindgen::from_value;
-use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlElement;
 use web_sys::HtmlSelectElement;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
-
-use serde::{Deserialize, Serialize};
+use lazy_static::lazy_static;
+use std::sync::Mutex;
 
 #[path = "wpm.rs"]
 mod wpm;
 use wpm::calculate as calculate_wpm;
 
 use crate::app::invoke;
+use shared::FileWriteData;
 
 #[derive(Properties, PartialEq)]
 pub struct CharCountProps {
@@ -26,10 +26,15 @@ pub struct CharCountProps {
     pub pages_ref: NodeRef,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct FileWriteData {
-    pub path: String,
-    pub content: String,
+
+// #[derive(Properties, PartialEq)]
+// pub struct StatisticProp {
+//     pub char_count: usize,
+//     pub pages_ref: NodeRef,
+// }
+
+lazy_static! {
+    static ref START_TIME: Mutex<DateTime<Utc>> = Mutex::new(Utc::now());
 }
 
 // #[derive(Properties, PartialEq)]
@@ -105,6 +110,9 @@ pub fn Statistics(
                                 })
                                 .to_string();
 
+                                let start_time = *START_TIME.lock().unwrap();
+                                let formatted_time = start_time.format("%Y-%m-%dT%H-%M-%S").to_string();
+
                                 let path_jsvalue = invoke("get_data_dir", JsValue::null()).await;
 
                                 let mut path_string =
@@ -114,6 +122,7 @@ pub fn Statistics(
 
                                 let json_write = FileWriteData {
                                     path: path_string,
+                                    name: formatted_time,
                                     content: json,
                                 };
 

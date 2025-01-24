@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - action-testing
 
 jobs:
   get-version:
@@ -46,7 +45,12 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+          sudo apt-get install -y \
+          libwebkit2gtk-4.0-dev \
+          libappindicator3-dev \
+          librsvg2-dev \
+          patchelf \
+          libssl-dev
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -95,59 +99,42 @@ jobs:
           release-name: "App v${{ needs.get-version.outputs.version }}"
           tag-name: "app-v${{ needs.get-version.outputs.version }}"
 
-  generate-hashes:
-    permissions:
-      contents: write
+      # - name: Generate Hashes
+      #   uses: MCJack123/ghaction-generate-release-hashes@v3
+      #   with:
+      #     hash-type: md5
+      #     file-name: hashes.txt
+      #     get-assets: true
 
-    if: github.event_name != 'workflow_dispatch'
-    runs-on: ubuntu-22.04
-    needs:
-      - publish-tauri
-      - get-version
-    steps:
-      - name: Download Assets
-        run: |
-          mkdir -p assets hashes
-          # Get the release information for the current tag
-          repo="MasterRick1337/PaperSmith"
-          ref_name=$(curl "https://api.github.com/repos/$repo/tags" | jq -r '.[1].name')
-          release_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$repo/releases/tags/$ref_name")
+  # generate-hashes:
+  #   permissions:
+  #     contents: write
 
-          # Extract asset URLs from the release information
-          echo "$release_info" | jq -r '.assets[] | .browser_download_url' | while read asset_url; do
-            if [[ ! "$asset_url" =~ \.sum$ ]]; then
-              wget "$asset_url" -P assets/
-            else
-              echo "skipping $asset_url"
-            fi
-          done
+  #   if: github.event_name != 'workflow_dispatch'
+  #   runs-on: ubuntu-22.04
+  #   needs:
+  #     - publish-tauri
+  #     - get-version
+  #   steps:
+  #     - name: debug hashes output
+  #       run: |
+  #         echo ${{ needs.publish-tauri.outputs.hashes }}
 
-      - name: Generate Individual Hash Files
-        run: |
-          for file in assets/*; do
-            sha256sum "$file" | awk '{print $1}' > "hashes/$(basename "$file").sum"
-          done
-      - name: get version
-        id: get_version
-        run: |
-          version=$(curl "https://api.github.com/repos/MasterRick1337/PaperSmith/tags" | jq -r '.[1].name')
-          echo "version=$version" >> $GITHUB_OUTPUT
+  #     - name: get version number
+  #       id: get_version_number
+  #       uses: pozetroninc/github-action-get-latest-release@master
+  #       with:
+  #         repository: ${{ github.repository }}
 
-      - name: get version number
-        id: get_version_number
-        run: |
-          version_number=$(version_number=$(curl  "https://api.github.com/repos/MasterRick1337/PaperSmith/tags" | jq -r '.[1].name'); echo ${version_number:4})
-          echo "version_number=$version_number" >> $GITHUB_OUTPUT
-
-      - name: Upload Release with MD5 Files
-        uses: softprops/action-gh-release@v2.0.8
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          name: "App ${{ steps.get_version_number.outputs.version_number }}"
-          body: "See the assets to download this version and install."
-          tag_name: ${{ steps.get_version.outputs.version }}
-          draft: false
-          prerelease: true
-          files: |
-            hashes/*
+  #     - name: Upload Release with MD5 Files
+  #       uses: softprops/action-gh-release@v2.0.8
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         name: "App ${{ steps.get_version_number.outputs.release }}"
+  #         body: "See the assets to download this version and install."
+  #         tag_name: app-${{ steps.get_version_number.outputs.release }}
+  #         draft: false
+  #         prerelease: true
+  #         files: |
+  #           hashes/*

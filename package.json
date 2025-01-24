@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "tailwindcss-themer": "^4.1.1",
-    "@tailwindcss/forms": "^0.5.9"
+    "@tailwindcss/forms": "^0.5.9",
+    "tailwindcss-themer": "^4.1.1"
   }
 }
