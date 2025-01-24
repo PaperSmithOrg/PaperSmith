@@ -35,7 +35,11 @@ pub struct FileWriteData {
 
 #[derive(Serialize)]
 pub struct PathArgs {
-    pub file_name: String,
+    pub name: String,
+}
+#[derive(Serialize)]
+pub struct PathArgsJson {
+    pub path: String,
 }
 
 // #[derive(Properties, PartialEq)]
@@ -43,6 +47,15 @@ pub struct PathArgs {
 //     pub char_count: usize,
 //     pub pages_ref: NodeRef,
 // }
+
+#[derive(Deserialize, Serialize, Debug)]
+struct FileContent {
+    char_count: u32,
+    char_count_with_no_spaces: u32,
+    session_time: String,
+    word_count: u32,
+    wpm: f32,
+}
 
 #[function_component]
 pub fn Statistics(
@@ -153,39 +166,42 @@ pub fn StatisticWindow(
 ) -> Html {
     let files = use_state(|| vec![]);
     let selected_file = use_state(|| String::new());
-    let formatted_file = use_state(|| String::new());
+    let file_content = use_state(|| String::new());
     let select_ref = use_node_ref();
 
     let onchange = {
         let select_ref = select_ref.clone();
         let selected_file = selected_file.clone();
+        let file_content = file_content.clone();
 
         Callback::from(move |_| {
             let select_ref = select_ref.clone();
             let selected_file = selected_file.clone();
+            let file_content = file_content.clone();
 
             let _ = Timeout::new(10, {
                 move || {
                     let select = select_ref.cast::<HtmlSelectElement>();
 
                     if let Some(select) = select {
-                        let selected_file = selected_file.clone();
+                        let selected_file_value = select.value();
 
                         {
-                            let selected_file = selected_file.clone();
+                            let selected_file_value = selected_file_value.clone();
+                            let file_content = file_content.clone();
                             spawn_local(async move {
-                                let selected_file = selected_file.clone();
-                                let selected_file_name = selected_file.as_str();
+                                let selected_file_value = selected_file_value.clone();
+                                let file_content = file_content.clone();
 
-                                let file_name = serde_wasm_bindgen::to_value(&PathArgs {
-                                    file_name: String::from(selected_file_name),
-                                }).unwrap();
+                                let file_name = PathArgs {
+                                    name: selected_file_value.clone(),
+                                };
 
-                                gloo_console::log!(format!("{}", selected_file_name));
+                                gloo_console::log!(format!("{}", selected_file_value));
 
                                 let file_name_jsvalue = invoke(
                                     "unformat_file_name",
-                                    file_name,
+                                    serde_wasm_bindgen::to_value(&file_name).unwrap(),
                                 )
                                 .await;
 
@@ -195,38 +211,68 @@ pub fn StatisticWindow(
                                 .unwrap()
                                 .unwrap();
                                 gloo_console::log!(format!("{}", file_name));
+
+
+                                let base_path_jsvalue = invoke("get_data_dir", JsValue::null()).await;
+
+                                let mut base_path = serde_wasm_bindgen::from_value::<Option<String>>(
+                                    base_path_jsvalue,
+                                )
+                                .unwrap()
+                                .unwrap();
+
+                                base_path.push_str("/PaperSmith/");
+                                base_path.push_str(&file_name);
+
+                                //gloo_console::log!(format!("{}",path));
+
+                                let path = PathArgsJson {
+                                    path: base_path.clone(),
+                                };
+
+                                let file_content_jsvalue = invoke(
+                                    "read_json_file",
+                                    serde_wasm_bindgen::to_value(&path).unwrap(),
+                                )
+                                .await;
+
+                                let temp_string: Option<String> = serde_wasm_bindgen::from_value(file_content_jsvalue).unwrap();
+                                
+                                    if let Some(content) = temp_string {
+                                        gloo_console::log!(format!("File Content: {}", content));
+
+                                        let parsed_content: Result<FileContent, _> =
+                                        serde_json::from_str(&content);
+
+                                    if let Ok(parsed) = parsed_content {
+                                        let display_content = format!(
+                                            "Session Time: {}\nWords: {}\nCharacter Count: {}\nCharacters without spaces: {}\nWPM: {}",
+                                            parsed.session_time,
+                                            parsed.word_count,
+                                            parsed.char_count,
+                                            parsed.char_count_with_no_spaces,
+                                            parsed.wpm
+                                        );
+                                        file_content.set(display_content);
+                                    } else {
+                                        gloo_console::log!(format!("Failed to parse JSON into FileContent struct."));
+                                    }
+                                } else {
+                                    gloo_console::log!(format!("Failed to read file content."));
+                                    file_content.set(String::from("Failed to load file content."));
+                                }
                             });
                         }
 
                         selected_file.set(select.value());
-
-                        //gloo_console::log!(format!("{}", select.value()));
                     }
                 }
             })
             .forget();
         })
     };
-    // {
-    //     let select_ref = select_ref.clone();
-    //     use_interval(
-    //         move || {
-    //             let select_ref = select_ref.clone();
 
-    //             {
-    //                 spawn_local(async move {
-    //                     let select_ref = select_ref.clone();
-    //                     let select = select_ref.cast::<HtmlSelectElement>();
 
-    //                     if let Some(select) = select {
-    //                         gloo_console::log!(format!("{}", select.value()))
-    //                     }
-    //                 })
-    //             }
-    //         },
-    //         100,
-    //     );
-    // }
     {
         let files = files.clone();
         use_interval(
@@ -262,9 +308,9 @@ pub fn StatisticWindow(
     html! {
         <>
             <div class="absolute top-0 left-0 z-50 bg-black/60 h-full w-full flex items-center justify-center text-text">
-                <div class="bg-base rounded-lg max-w-[50%] min-w-[50%] max-h-[70%] min-h-[70%] p-8 flex flex-col justify-between">
+                <div class="bg-base rounded-lg max-w-[30%] min-w-[30%] max-h-[50%] min-h-[50%] p-8 flex flex-col justify-between">
                     <div>
-                        <label for="file-select" class="block text-white-700 font-medium mb-2">{"Select a file"}</label>
+                        <label for="file-select" class="bg-base block text-text font-medium mb-2">{"Select a file"}</label>
                         <select
                             ref={select_ref}
                             class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
@@ -275,6 +321,19 @@ pub fn StatisticWindow(
                                 files_to_html((*files).clone())
                             }
                         </select>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="block text-white-700 font-medium mb-2">{"File Content"}</label>
+                            <div class="bg-gray-200 p-4 rounded-lg">
+                            { 
+                                if !(*file_content).is_empty() {
+                                    html! { <pre class="text-black whitespace-pre-wrap">{ &*file_content }</pre> }
+                                } else {
+                                    html! { <p class="text-black">{"No content to display."}</p> }
+                                }
+                            }
+                        </div>
                     </div>
 
                     <button

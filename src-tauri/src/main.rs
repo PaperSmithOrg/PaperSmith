@@ -49,6 +49,7 @@ fn main() {
             get_file_content,
             list_statistic_files,
             unformat_file_name,
+            read_json_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -133,8 +134,8 @@ fn format_file_name(file_name: &str) -> Option<String> {
 }
 
 #[tauri::command]
-fn unformat_file_name(formatted_name: &str) -> Option<String> {
-    let parts: Vec<&str> = formatted_name.split(' ').collect();
+fn unformat_file_name(name: String) -> Option<String> { 
+    let parts: Vec<&str> = name.split(' ').collect();
     if parts.len() == 2 {
         let date = parts[0];
         let time = parts[1].replace(":", "-");
@@ -143,6 +144,18 @@ fn unformat_file_name(formatted_name: &str) -> Option<String> {
     None
 }
 
+#[tauri::command]
+fn read_json_file(path: String) -> Option<String> {
+    match fs::read_to_string(path) {
+        Ok(content) => {
+            match serde_json::from_str::<serde_json::Value>(&content) {
+                Ok(_) => Some(content),
+                Err(_) => None,
+            }
+        }
+        Err(_) => None,
+    }
+}
 
 #[tauri::command]
 fn get_project() -> Option<Project> {
