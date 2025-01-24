@@ -217,7 +217,9 @@ pub fn dropdown(
                     <div
                         class="flex flex-row items-center pl-5 text-ellipsis whitespace-nowrap overflow-hidden"
                     >
-                        <div class="w-2 h-2 mr-2 bg-text rounded-full" />
+                        <div
+                            class="w-2 h-2 mr-2 bg-text group-hover/buttoncontainer:bg-mantle rounded-full transition"
+                        />
                         { (*name_display).clone() }
                     </div>
                 } else {
