@@ -13,6 +13,7 @@ use yewdux::prelude::*;
 #[derive(Properties, PartialEq)]
 pub struct Props {
     pub closing_callback: Callback<MouseEvent>,
+    pub closable: bool,
 }
 
 #[derive(Serialize)]
@@ -29,6 +30,7 @@ pub struct PathArgs {
 pub fn project_wizard(
     Props {
         closing_callback: on_close,
+        closable,
     }: &Props,
 ) -> Html {
     let (_, dispatch) = use_store::<State>();
@@ -254,12 +256,14 @@ pub fn project_wizard(
                 >
                     { "Confirm" }
                 </button>
-                <button
-                    onclick={on_close}
-                    class="rounded-lg text-lg px-2 py-1 ml-4 bg-secondary text-crust hover:scale-105 border-0"
-                >
-                    { "Close" }
-                </button>
+                if *closable {
+                    <button
+                        onclick={on_close}
+                        class="rounded-lg text-lg px-2 py-1 ml-4 bg-secondary text-crust hover:scale-105 border-0"
+                    >
+                        { "Close" }
+                    </button>
+                }
             </div>
         </>
     )

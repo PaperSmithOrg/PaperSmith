@@ -96,31 +96,10 @@ pub fn app() -> Html {
     let text_input_ref = use_node_ref();
     let pages_ref = use_node_ref();
 
-    {
-        use_effect_with((), move |()| {
-            apply_settings();
-        });
-    }
-
-    use_effect_with(state.clone(), |state| {
-        let state = state.clone();
-        if let Some(project) = state.project.clone() {
-            spawn_local(async move {
-                let _project_jsvalue = invoke(
-                    "write_project_config",
-                    serde_wasm_bindgen::to_value(&ProjectProps {
-                        project: project.clone(),
-                    })
-                    .unwrap(),
-                )
-                .await;
-            });
-        }
-    });
-
     let save_fn = {
         let text_input_ref = text_input_ref.clone();
         let modal = modal.clone();
+        let state = state.clone();
 
         Callback::from(move |()| {
             let text_input_ref = text_input_ref.clone();
@@ -129,6 +108,9 @@ pub fn app() -> Html {
             let state = state.clone();
 
             spawn_local(async move {
+                if state.project.is_none() {
+                    return;
+                }
                 if state.project.as_ref().unwrap().active_chapter.is_none() {
                     return;
                 }
@@ -210,6 +192,26 @@ pub fn app() -> Html {
                                 let modal = modal.clone();
                                 Callback::from(move |_| modal.set(html!()))
                             }
+                    closable={true}
+                        />
+                    }}
+                />
+            });
+        })
+    };
+    let open_modal2 = {
+        let modal = modal.clone();
+        Callback::from(move |_: MouseEvent| {
+            modal.set(html! {
+                <Modal
+                    content={html! {
+                        <ProjectWizard
+                            closing_callback={
+                                let modal = modal.clone();
+                                Callback::from(move |_| modal.set(html!()))
+                            }
+
+                    closable={false}
                         />
                     }}
                 />
@@ -254,7 +256,9 @@ pub fn app() -> Html {
     };
 
     let on_load = {
+        let modal = modal.clone();
         Callback::from(move |_| {
+            let modal = modal.clone();
             let dispatch = dispatch.clone();
             spawn_local(async move {
                 let project_jsvalue = invoke("get_project", JsValue::null()).await;
@@ -264,6 +268,7 @@ pub fn app() -> Html {
                     dispatch.set(State {
                         project: project_or_none,
                     });
+                    modal.set(html!());
                 }
             });
         })
@@ -278,6 +283,62 @@ pub fn app() -> Html {
         let html_doc: HtmlDocument = document().dyn_into().unwrap();
         html_doc.exec_command("redo").unwrap();
     });
+
+    {
+        use_effect_with((), move |()| {
+            apply_settings();
+        });
+    }
+    {
+        let on_load = on_load.clone();
+        let modal = modal.clone();
+        use_effect_with(state, move |state| {
+            if let Some(project) = state.project.clone() {
+                spawn_local(async move {
+                    let _project_jsvalue = invoke(
+                        "write_project_config",
+                        serde_wasm_bindgen::to_value(&ProjectProps {
+                            project: project.clone(),
+                        })
+                        .unwrap(),
+                    )
+                    .await;
+                });
+            } else {
+                modal.set(html! {
+                    <Modal
+                        content={html! {
+                <div class="flex flex-col h-32 w-full justify-between">
+                    <div class="text-3xl text-center">
+                        {"Please select or create a project"}
+                    </div>
+                    <div class="flex justify-evenly w-full text-xl">
+                        <div
+                            class="bg-primary text-mantle p-2 rounded-lg cursor-pointer"
+                            onclick={let on_load = on_load.clone();
+                            Callback::from(move |e: MouseEvent| {
+                                on_load.emit(e);
+                            })}
+                        >
+                            { "Open Project" }
+                        </div>
+                        <div
+                            class="bg-secondary text-mantle p-2 rounded-lg cursor-pointer"
+                            onclick={let open_modal2 = open_modal2.clone();
+                            Callback::from(move |e: MouseEvent| {
+                                open_modal2.emit(e);
+                            })}
+                        >
+                            { "Create Project" }
+                        </div>
+                    </div>
+                </div>
+                                }}
+                    />
+                });
+            }
+        });
+    }
 
     html! {
         <div class="h-screen w-screen flex flex-col">
