@@ -1,32 +1,34 @@
 # PaperSmith
 
+<!--toc:start-->
+
+- [PaperSmith](#papersmith)
+  - [Main Contributors](#main-contributors)
+  - [Roadmap](#roadmap)
+    - [Done](#done)
+    - [Planned](#planned)
+    - [Future ideas](#future-ideas)
+  - [Installation](#installation)
+  - [Build from source](#build-from-source)
+  <!--toc:end-->
+
 _A free and open-source writing application for authors_
 
-### Main Contributors
+> [!CAUTION]
+> This project is in its early stages of developemnt and we consider it unstable. Use at your own risk.
+
+## Main Contributors
+
 - Toll25
 - MasterRick1337
 - Alllpacka
 - DotDo1
 
-### Table of contents
+## Roadmap
 
-- [Status](#status)
-- [Roadmap](#roadmap)
-  - [Done](#done)
-  - [Planned](#planned)
-  - [Future Ideas](#future-ideas)
-- [Installation](#installation)
-- [Build from source](#build-from-source)
+Features that are either already finished, in progress or planned for future development. It also includes ideas for later implementation.
 
-### Status
-
-This project is in a very early stage of development and currently NOT ready for usage.
-
-### Roadmap
-
-Features that are either already finished, are in progress or are planned for future development. It also includes ideas for later implementation.
-
-#### Done
+### Done
 
 - [x] Split-View
 - [x] Project Explorer
@@ -36,34 +38,32 @@ Features that are either already finished, are in progress or are planned for fu
 - [x] Project creation wizard
 - [x] Markdown Formatting
 - [x] Autosaving
+- [x] Settings menu
+- [x] Statistics Window
 
-#### Planned
+### Planned
 
 - [ ] Automatic Backups
-- [ ] Settings menu
 - [ ] Export options
 - [ ] Spellcheck
-- [ ] Statistics Window
 - [ ] Single-View
 
-#### Future ideas
+### Future ideas
 
 - [ ] Multiple open documents
 - [ ] Page-full layout
 - [ ] Grammar check
 
-### Installation
+## Installation
 
-Get the binary from the Github releases.
+Binaries are available from Github releases.
 
 Not yet packaged anywhere.
 
-### Build from source
+## Build from source
 
-1. Install rust
-2. Add `wasm32-unknown-unknown` target to rust
-3. Install tauri dependencies
-4. Install tauri-cli (Version < 2.0)
-5. Install trunk
-6. Clone repo & cd into it
-7. Run `cargo tauri dev`
+1. Install Rust
+2. Install [Tauri V1 dependencies](https://v1.tauri.app/v1/guides/getting-started/prerequisites#1-system-dependencies)
+3. Clone repo `git clone PaperSmithOrg/PaperSmith && cd PaperSmith`
+4. Run `make install` (installs trunk, tauri-cli, npm deps and adds WebAssembly target to rustup)
+5. Run `make dev` / `make build`
