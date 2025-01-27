@@ -312,9 +312,9 @@ fn chapter(
             <Title onclick={on_load}>
                 <div class="pl-5">{ "Contents" }</div>
             </Title>
-            <Dropdown title="Notes" open=false dropdown_type={Type::Notes} chapter_index={index}>
-                { for note_elements }
-            </Dropdown>
+            //<Dropdown title="Notes" open=false dropdown_type={Type::Notes} chapter_index={index}>
+            //    { for note_elements }
+            //</Dropdown>
             <Title onclick={on_extras}>
                 <div class="pl-5">{ "Extras" }</div>
             </Title>
