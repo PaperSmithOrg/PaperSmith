@@ -15,7 +15,7 @@
 _A free and open-source writing application for authors_
 
 > [!CAUTION]
-> This project is in its early stages of developemnt and we consider it unstable. Use at your own risk.
+> This project is in its early stages of development and we consider it unstable. Use at your own risk.
 
 ## Main Contributors
 
