@@ -80,6 +80,7 @@ pub struct FileWriteData {
 #[derive(Default, Clone, PartialEq, Eq, Store, Debug)]
 pub struct State {
     project: Option<Project>,
+    settings: Option<Settings>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -177,7 +178,11 @@ pub fn app() -> Html {
             move || {
                 save.emit(MouseEvent::new("Dummy").unwrap());
             },
-            300_000,
+            if let Some(settings) = state.settings.as_ref() {
+                settings.interval
+            } else {
+                Settings::default().interval
+            },
         ); // 300,000 ms = 5 minutes
     }
 
@@ -265,9 +270,7 @@ pub fn app() -> Html {
                 let project_or_none: Option<Project> =
                     serde_wasm_bindgen::from_value(project_jsvalue).unwrap();
                 if project_or_none.is_some() {
-                    dispatch.set(State {
-                        project: project_or_none,
-                    });
+                    dispatch.reduce_mut(|state| state.project = project_or_none);
                     modal.set(html!());
                 }
             });
@@ -419,12 +422,16 @@ fn apply_settings() {
 
         let theme = settings.theme;
 
+        println!("{:?}", theme.clone());
+
         let _ = Timeout::new(10, {
             move || {
                 switch_theme(&theme);
             }
         })
         .forget();
+
+        // switch_theme(theme.as_str());
     });
 }
 

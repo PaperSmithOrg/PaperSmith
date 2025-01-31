@@ -56,8 +56,6 @@ pub fn get_delete_callback(
             )
             .await;
         });
-        dispatch.set(State {
-            project: Some(temp_project),
-        });
+        dispatch.reduce_mut(|state| state.project = Some(temp_project));
     })
 }

@@ -25,18 +25,23 @@ pub fn settings_menu(
 
     let theme = use_state(|| String::from("Light"));
 
+    let interval = use_state(|| 300_000);
+
     let on_confirm = {
         let on_close = on_close.clone();
         let theme = theme.clone();
+        let interval = interval.clone();
 
         Callback::from(move |_| {
             let theme = theme.clone();
+            let interval = interval.clone();
 
             spawn_local(async move {
                 switch_theme(&theme);
 
                 let content = json!({
                     "theme": *theme,
+                    "interval": *interval,
                 })
                 .to_string();
 
@@ -69,6 +74,8 @@ pub fn settings_menu(
 
     let switch_ref = use_node_ref();
 
+    let interval_ref = use_node_ref();
+
     let themes = [
         "Light".to_string(),
         "Light Dark".to_string(),
@@ -90,7 +97,22 @@ pub fn settings_menu(
         })
     };
 
+    let on_interval_change = {
+        let select_ref = interval_ref.clone();
+
+        Callback::from(move |_| {
+            let select = select_ref.cast::<HtmlSelectElement>();
+            let interval = interval.clone();
+
+            if let Some(select) = select {
+                interval.set(select.value().parse::<i32>().unwrap() * 60 * 1_000);
+            }
+        })
+    };
+
     let themes_vec = themes_to_html(&themes);
+
+    let interval_vec = get_intervals();
 
     html!(
         <>
@@ -100,7 +122,6 @@ pub fn settings_menu(
                 <div class="font-bold self-center">{ "Theme" }</div>
                 // <ThemeSwitcher theme={theme}/>
                 <div>
-                    <div>
                         <select
                             ref={switch_ref}
                             onchange={onchange}
@@ -108,7 +129,20 @@ pub fn settings_menu(
                         >
                             { themes_vec }
                         </select>
-                    </div>
+                </div>
+            </div>
+            <br />
+            <div id="interval_change" class="flex w-full pt-8 justify-between">
+                <div class="font-bold self-center">{ "Auto-Save Interval" }</div>
+                // <ThemeSwitcher theme={theme}/>
+                    <div>
+                        <select
+                            ref={interval_ref}
+                            onchange={on_interval_change}
+                            class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
+                        >
+                            { interval_vec }
+            </select>
                 </div>
             </div>
             <div class="flex justify-end w-full pt-8">
@@ -135,6 +169,17 @@ fn themes_to_html(themes: &[String]) -> Html {
         .iter()
         .map(|theme| {
             html! { <option value={theme.clone()}>{ theme }</option> }
+        })
+        .collect()
+}
+
+fn get_intervals() -> Html {
+    let intervals = [0, 1, 3, 5, 10, 15, 30];
+
+    intervals
+        .iter()
+        .map(|interval| {
+            html! { <option value={ interval.to_string() }>{ interval.to_string() + "min" }</option> }
         })
         .collect()
 }

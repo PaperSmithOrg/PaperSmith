@@ -181,9 +181,7 @@ fn get_kayboard_handler(
                                 }
                             }
                         }
-                        dispatch.set(State {
-                            project: Some(temp_project.clone()),
-                        });
+                        dispatch.reduce_mut(|state| state.project = Some(temp_project.clone()));
                     }
                 });
             }

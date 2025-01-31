@@ -189,9 +189,7 @@ pub fn dropdown(
                             temp_project.chapters[chapter_index.unwrap()]
                                 .notes
                                 .push(check_path.file_name().unwrap().to_string_lossy().into());
-                            dispatch.set(State {
-                                project: Some(temp_project),
-                            });
+                            dispatch.reduce_mut(|state| state.project = Some(temp_project));
                             if !*chevron_rotated {
                                 onclick.emit(e);
                             }

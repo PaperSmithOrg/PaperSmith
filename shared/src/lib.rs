@@ -12,12 +12,14 @@ pub struct FileWriteData {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct Settings {
     pub theme: String,
+    pub interval: u32,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: String::from("Light"),
+            interval: 300_000,
         }
     }
 }
@@ -26,6 +28,7 @@ impl fmt::Display for Settings {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Settings:")?;
         writeln!(f, "Theme: {:?}", self.theme)?;
+        writeln!(f, "Interval: {:?}", self.interval)?;
 
         Ok(())
     }

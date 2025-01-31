@@ -202,12 +202,18 @@ fn get_settings(path: &str) -> Settings {
             let mut content = String::new();
             let _ = x.read_to_string(&mut content);
 
-            let json_content: Settings =
-                serde_json::from_str(&content).expect("JSON was not well-formatted");
+            let json_content: Result<Settings, serde_json::Error> = serde_json::from_str(&content);
 
-            println!("{}", json_content.theme);
+            match json_content {
+                Ok(settings) => {
+                    return settings;
+                }
+                Err(e) => {
+                    eprint!("Settings were not readable! Error: {:?}", e);
+                }
+            }
 
-            json_content
+            Settings::default()
         }
         Err(e) => {
             eprint!("{e}");

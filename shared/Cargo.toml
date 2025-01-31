@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 serde = "1.0.204"
+yewdux = "0.10.0"

@@ -203,9 +203,7 @@ pub fn project_wizard(
                 let project_or_none: Option<Project> =
                     serde_wasm_bindgen::from_value(project_jsvalue).unwrap();
                 if project_or_none.is_some() {
-                    dispatch.set(State {
-                        project: project_or_none,
-                    });
+                    dispatch.reduce_mut(|state| state.project = project_or_none);
                 }
             });
             on_close.emit(MouseEvent::new("Dummy").unwrap());
