@@ -1,29 +1,12 @@
 use std::path::Path;
 
-use buttons::Button;
-use deleting::get_delete_callback;
 use serde_wasm_bindgen::to_value;
-use shared::Chapter;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
+use yew_icons::Icon;
 use yew_icons::IconId;
 use yewdux::prelude::*;
-
-#[path = "renaming.rs"]
-mod renaming;
-use renaming::get_rename_callback;
-use renaming::RenameKind;
-
-#[path = "deleting.rs"]
-mod deleting;
-
-#[path = "dropdown.rs"]
-mod dropdown;
-
-use dropdown::Dropdown;
-use dropdown::Type;
 
 #[path = "buttons.rs"]
 pub mod buttons;
@@ -32,11 +15,6 @@ pub use buttons::{ButtonContainer, Props as ButtonProps};
 use crate::app::invoke;
 use crate::app::wizard::PathArgs;
 use crate::app::State;
-
-#[derive(Properties, PartialEq)]
-pub struct SideBarProps {
-    pub input_ref: NodeRef,
-}
 
 fn get_file_name(path: &Path) -> String {
     path.to_str()
@@ -48,21 +26,25 @@ fn get_file_name(path: &Path) -> String {
 }
 
 #[function_component(SideBarWrapper)]
-pub fn sidebarwrapper(props: &SideBarProps) -> Html {
+pub fn sidebarwrapper() -> Html {
     let (state, _dispatch) = use_store::<State>();
     if state.project.is_none() {
         html! {}
     } else {
-        html! { <SideBar input_ref={props.input_ref.clone()} /> }
+        html! { <SideBar /> }
     }
 }
+
 #[function_component(SideBar)]
-pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
+pub fn sidebar() -> Html {
     let (state, dispatch) = use_store::<State>();
-    let rename_input_ref = use_node_ref();
     let title = use_state(|| get_file_name(&(state.project).as_ref().unwrap().path));
     let name_display = use_state(|| html! { (*title).clone() });
     let chapters = use_state(Vec::<VNode>::new);
+    let tabs = vec!["Overview".to_string(), "Notes".to_string()];
+    let note_types = vec!["Project Notes".to_string(), "Chapter Notes".to_string()];
+    let tab = use_state(|| tabs[0].clone());
+    let note_tab = use_state(|| note_types[0].clone());
 
     {
         let title = title.clone();
@@ -76,7 +58,6 @@ pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
 
     {
         let chapters = chapters.clone();
-        let input_ref = input_ref.clone();
 
         let state = state.clone();
         use_effect_with(state.clone(), move |_| {
@@ -90,10 +71,9 @@ pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
                     .map(|(index, chapter)| {
                         html! {
                             <ChapterComponent
-                                key={chapter.name.clone()}
+                                key={chapter.clone()}
                                 chapter={chapter.clone()}
                                 index={index}
-                                input_ref={input_ref.clone()}
                                 active={project_data.active_chapter == Some(index)}
                             />
                         }
@@ -108,7 +88,7 @@ pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
     let on_add_chapter = {
         let state = state.clone();
         let dispatch = dispatch.clone();
-        Callback::from(move |_| {
+        Callback::from(move |_: MouseEvent| {
             let state = state.clone();
             let dispatch = dispatch.clone();
             spawn_local(async move {
@@ -141,75 +121,110 @@ pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
                 )
                 .await;
                 let mut temp_project = state.project.as_ref().unwrap().clone();
-                temp_project.chapters.push(Chapter {
-                    name: check_path.file_name().unwrap().to_string_lossy().into(),
-                    notes: Vec::new(),
-                    extras: Vec::new(),
-                });
+                temp_project
+                    .chapters
+                    .push(check_path.file_name().unwrap().to_string_lossy().into());
                 dispatch.reduce_mut(|state| state.project = Some(temp_project));
             });
         })
     };
 
-    let button_props = [
-        ButtonProps {
-            callback: get_rename_callback(
-                name_display.clone(),
-                title,
-                rename_input_ref.clone(),
-                state,
-                dispatch,
-                RenameKind::Book,
-                None,
-            ),
-            icon: IconId::LucideEdit3,
-            title: "Rename Book".to_string(),
-            size: 1.,
-        },
-        ButtonProps {
-            callback: on_add_chapter,
-            icon: IconId::LucidePlus,
-            title: "Create Chapter".to_string(),
-            size: 1.,
-        },
-    ];
-
     html! {
         <>
-            <div id="file-explorer" class="select-none outline-none">
+            <div
+                id="file-explorer"
+                class="select-none cursor-default transition h-full overflow-auto flex flex-col"
+            >
                 <div
-                    class="group/buttoncontainer items-center flex relative transition text-ellipsis whitespace-nowrap overflow-hidden cursor-default text-xl"
+                    class="items-center overflow-hidden text-2xl text-subtext hover:text-text my-2 shrink-0"
                 >
-                    <div ref={rename_input_ref.clone()} class="pl-2 mb-1">
-                        { (*name_display).clone() }
+                    { (*name_display).clone() }
+                </div>
+                <div class="w-full flex my-2">
+                    <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
+                        { "Settings" }
                     </div>
-                    <div class="flex items-center ml-auto my-auto">
-                        { button_props
-                        .iter()
-                        .map(|props| {
-                            html! { <>
-                                <Button callback={props.callback.clone()} icon={props.icon} size={props.size} title={props.title.clone()}/>
-                            </>
-                            }
-                        })
-                        .collect::<Html>() }
+                    <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
+                        { "Statistics" }
+                    </div>
+                    <div class="rounded-full bg-base py-2 px-4 cursor-pointer grow">
+                        { "Extras" }
                     </div>
                 </div>
-                <div
-                    class="text-lg border-l-2 border-r-0 border-y-0 border-solid border-text pl-2 ml-2"
-                >
-                    { for (*chapters).clone() }
-                </div>
+                <TabMenu tabs={tabs} active_tab={tab.clone()} />
+                if *tab == "Overview" {
+                    <div class="overflow-scroll grow shrink">
+                        { for (*chapters).clone() }
+                        <div
+                            class="w-full hover:bg-base rounded-lg flex justify-center items-center cursor-pointer"
+                            onclick={on_add_chapter}
+                        >
+                            <div class="h-16 flex items-center align-center">
+                                <Icon
+                                    icon_id={IconId::LucidePlus}
+                                    width="2em"
+                                    height="2em"
+                                    title="Add Chapter"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                } else {
+                    <TabMenu tabs={note_types} active_tab={note_tab.clone()} />
+                }
             </div>
         </>
     }
 }
 
 #[derive(Properties, PartialEq)]
+struct TabMenuProps {
+    pub tabs: Vec<String>,
+    pub active_tab: UseStateHandle<String>,
+}
+
+#[function_component(TabMenu)]
+fn tabmenu(TabMenuProps { tabs, active_tab }: &TabMenuProps) -> Html {
+    let standard_classes = vec![
+        "py-2",
+        "px-4",
+        "cursor-pointer",
+        "flex",
+        "flex-1",
+        "justify-center",
+    ];
+
+    let tabs = tabs
+        .iter()
+        .enumerate()
+        .map(|(index, tab)| {
+            html! {
+                <div
+                    class={classes!(standard_classes.clone(),
+                        if **active_tab == *tab { "bg-primary text-mantle" } else { "bg-base" },
+                        if tabs.len() == 1 { "rounded-full"} else {""},
+                        if index == 0 { "rounded-l-full" } else {""},
+                        if index == tabs.len()-1 { "rounded-r-full" } else {""},
+                    )}
+                    onclick={Callback::from({
+                        let active_tab = active_tab.clone();
+                        let tab_clone = tab.clone();
+                        move |_| active_tab.set(tab_clone.clone())
+                    })}
+                >
+                    { tab }
+                </div>
+            }
+        })
+        .collect::<Vec<VNode>>();
+
+    html! { <div class="w-full flex my-2 justify-around gap-1">{ for tabs }</div> }
+}
+
+#[derive(Properties, PartialEq)]
 struct ChapterProps {
-    pub chapter: Chapter,
+    pub chapter: String,
     pub index: usize,
-    pub input_ref: NodeRef,
     pub active: bool,
 }
 
@@ -218,190 +233,48 @@ fn chapter(
     ChapterProps {
         chapter,
         index,
-        input_ref,
         active,
     }: &ChapterProps,
 ) -> Html {
-    let (state, dispatch) = use_store::<State>();
-    let note_elements: Vec<Html> = chapter
-        .notes
-        .iter()
-        .map(|note| {
-            html! { <Entry key={note.clone()} name={note.clone()} chapter_index={index} /> }
-        })
-        .collect();
-    let on_extras = {
-        let index = *index;
-        let state = state.clone();
-        Callback::from(move |_| {
-            let state = state.clone();
-            spawn_local(async move {
-                let project_clone = state.project.as_ref().unwrap().clone();
-                let mut extras_path = project_clone.path.clone();
-                extras_path.push("Chapters");
-                extras_path.push(project_clone.chapters[index].name.clone());
-                extras_path.push("Extras");
-                invoke(
-                    "open_explorer",
-                    to_value(&PathArgs {
-                        path: extras_path.to_str().unwrap().to_string(),
-                    })
-                    .unwrap(),
-                )
-                .await;
-            });
-        })
-    };
+    let (_state, dispatch) = use_store::<State>();
 
-    let mut content_path = (state.project).as_ref().unwrap().path.clone();
-    content_path.push("Chapters");
-    content_path.push(chapter.name.clone());
-    content_path.push("Content");
-    content_path.set_extension("md");
     let on_load = {
-        let input_ref = input_ref.clone();
-        let chapter = chapter.clone();
+        let index = *index;
 
-        Callback::from(move |_| {
+        Callback::from(move |_: MouseEvent| {
             let dispatch = dispatch.clone();
-            let state = state.clone();
-            let content_path = content_path.clone();
-            let input_ref = input_ref.clone();
-
-            let index = state
-                .project
-                .clone()
-                .unwrap()
-                .chapters
-                .iter()
-                .position(|r| r.name == chapter.name)
-                .unwrap();
 
             dispatch.reduce_mut(|x| x.project.as_mut().unwrap().active_chapter = Some(index));
-
-            spawn_local(async move {
-                let content_path = content_path.clone();
-                let content = invoke(
-                    "get_file_content",
-                    to_value(&PathArgs {
-                        path: content_path.to_str().unwrap().to_string(),
-                    })
-                    .unwrap(),
-                )
-                .await
-                .as_string()
-                .unwrap();
-
-                if let Some(input_element) = input_ref.cast::<HtmlElement>() {
-                    input_element.set_inner_text(content.as_str());
-                    let _ = input_element.dispatch_event(&InputEvent::new("input").unwrap());
-                }
-            });
         })
     };
-
-    html! {
-        <Dropdown
-            title={chapter.name.clone()}
-            open=false
-            dropdown_type={Type::Chapter}
-            accent={active}
-        >
-            <Title onclick={on_load}>
-                <div class="pl-5">{ "Contents" }</div>
-            </Title>
-            //<Dropdown title="Notes" open=false dropdown_type={Type::Notes} chapter_index={index}>
-            //    { for note_elements }
-            //</Dropdown>
-            <Title onclick={on_extras}>
-                <div class="pl-5">{ "Extras" }</div>
-            </Title>
-        </Dropdown>
-    }
-}
-
-#[derive(Properties, PartialEq, Eq)]
-pub struct EntryProps {
-    pub name: String,
-    pub chapter_index: usize,
-}
-
-#[function_component(Entry)]
-fn entry(
-    EntryProps {
-        name,
-        chapter_index,
-    }: &EntryProps,
-) -> Html {
-    let (state, dispatch) = use_store::<State>();
-    let input_ref = use_node_ref();
-    let title = use_state(|| name.clone());
-    let name_display = use_state(|| html! { name.clone() });
 
     let button_props = vec![
         ButtonProps {
-            callback: get_rename_callback(
-                name_display.clone(),
-                title,
-                input_ref,
-                state.clone(),
-                dispatch.clone(),
-                RenameKind::Note,
-                Some(*chapter_index),
-            ),
+            callback: Callback::from(|_: MouseEvent| {}),
             icon: IconId::LucideEdit3,
-            title: "Rename Note".to_string(),
-            size: 1.,
+            title: "Rename".to_string(),
+            size: 1.3,
         },
         ButtonProps {
-            callback: get_delete_callback(
-                state,
-                dispatch,
-                name.clone(),
-                Some(*chapter_index),
-                RenameKind::Note,
-            ),
+            callback: Callback::from(|_: MouseEvent| {}),
             icon: IconId::LucideTrash2,
-            title: "Delete Note".to_string(),
-            size: 1.,
+            title: "Delete".to_string(),
+            size: 1.3,
         },
     ];
-    html! {
-        <Title button_props={button_props}>
-            <div class="pl-2">{ (*name_display).clone() }</div>
-        </Title>
-    }
-}
 
-#[derive(Properties, PartialEq)]
-pub struct TitleProps {
-    pub children: Html,
-    #[prop_or_default]
-    pub button_props: Vec<ButtonProps>,
-    #[prop_or_default]
-    pub onclick: Callback<MouseEvent>,
-}
-
-#[function_component(Title)]
-fn title(
-    TitleProps {
-        children,
-        button_props,
-        onclick,
-    }: &TitleProps,
-) -> Html {
     html! {
         <div
-            class="group/buttoncontainer items-center flex relative transition rounded-md my-[1px] hover:bg-secondary hover:text-mantle cursor-pointer"
-            onclick={onclick}
+            class={classes!("hover:bg-mantle", "flex", "flex-row", "rounded-lg", "cursor-pointer", "group/buttoncontainer", "pr-3", if *active {"bg-base"} else {""})}
+            onclick={on_load}
         >
-            { children.clone() }
-            <ButtonContainer button_props={(*button_props).clone()} />
+            <div
+                class={classes!("p-2", "w-8", "h-8", "rounded-lg", "text-mantle", "m-2", "justify-center", "items-center", "flex", "text-2xl", if *active {"bg-secondary"} else {"bg-primary"})}
+            >
+                { *index+1 }
+            </div>
+            <div class={classes!("flex", "items-center")}>{ chapter.clone() }</div>
+            <ButtonContainer button_props={button_props} />
         </div>
     }
 }
-//rounded-md hover:bg-green pl-2 hover:text-mantle">
-//text-text text-ellipsis whitespace-nowrap overflow-hidden cursor-default text-xl"
-//rounded-md my-[1px] pl-5 hover:bg-sapphire hover:text-mantle"
-//rounded-md my-[1px] content-center transition text-subtext1 hover:bg-mauve hover:text-mantle"
-//rounded-md my-[1px] pl-5 hover:bg-sapphire hover:text-mantle"

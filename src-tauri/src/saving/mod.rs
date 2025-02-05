@@ -15,6 +15,10 @@ pub fn create_project(path: String) -> Option<Project> {
     let _ = fs::create_dir(&path);
     path.pop();
 
+    path.push("Extras");
+    let _ = fs::create_dir(&path);
+    path.pop();
+
     path.push("Backups");
     let _ = fs::create_dir(&path);
     path.pop();
@@ -25,6 +29,11 @@ pub fn create_project(path: String) -> Option<Project> {
 
     path.push(".papersmith");
     path.set_extension("json");
+    let _ = File::create(&path);
+    path.pop();
+
+    path.push("Global_Note");
+    path.set_extension("md");
     let _ = File::create(&path);
     path.pop();
 
@@ -102,12 +111,9 @@ pub fn add_chapter(path: String) {
     let mut path = PathBuf::from(path);
     let _ = fs::create_dir(&path);
 
-    path.push("Notes");
-    let _ = fs::create_dir(&path);
-    path.pop();
-
-    path.push("Extras");
-    let _ = fs::create_dir(&path);
+    path.push("Note");
+    path.set_extension("md");
+    let _ = File::create(&path);
     path.pop();
 
     path.push("Content");

@@ -28,10 +28,7 @@ pub fn notepads(
     let on_text_input = text_input_handler(text_input_ref.clone(), render_ref.clone());
 
     html!(
-        <div
-            class="flex flex-grow h-notepad bg-crust justify-evenly gap-5 px-3"
-            ref={pages_ref.clone()}
-        >
+        <div class="flex flex-grow  bg-crust justify-evenly gap-5 px-3" ref={pages_ref.clone()}>
             <div
                 class="bg-base max-h-full flex flex-1 flex-col overflow-hidden mx-2 rounded-md max-w-[45vw]"
             >

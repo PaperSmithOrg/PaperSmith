@@ -37,41 +37,8 @@ impl fmt::Display for Settings {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct Project {
     pub path: PathBuf,
-    pub chapters: Vec<Chapter>,
+    pub chapters: Vec<String>,
     pub active_chapter: Option<usize>,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
-pub struct Chapter {
-    pub name: String,
-    pub notes: Vec<String>,
-    pub extras: Vec<String>,
-}
-
-impl fmt::Display for Project {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Project Path: {:?}", self.path)?;
-        writeln!(f, "Chapters:")?;
-        for (index, chapter) in self.chapters.iter().enumerate() {
-            writeln!(f, "  Chapter {}: {}", index + 1, chapter)?;
-        }
-        Ok(())
-    }
-}
-
-impl fmt::Display for Chapter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Name: {}", self.name)?;
-        writeln!(f, "  Notes:")?;
-        for (index, note) in self.notes.iter().enumerate() {
-            writeln!(f, "    {}: {}", index + 1, note)?;
-        }
-        writeln!(f, "  Extras:")?;
-        for (index, extra) in self.extras.iter().enumerate() {
-            writeln!(f, "    {}: {}", index + 1, extra)?;
-        }
-        Ok(())
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

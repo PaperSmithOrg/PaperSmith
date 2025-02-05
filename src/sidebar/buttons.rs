@@ -43,7 +43,7 @@ pub fn button(
 #[function_component(ButtonContainer)]
 pub fn button_container(ContainerProps { button_props }: &ContainerProps) -> Html {
     html!(
-        <div class="hidden group-hover/buttoncontainer:flex items-center ml-auto my-auto">
+        <div class="hidden group-hover/buttoncontainer:flex flex-col items-center ml-auto my-auto">
             { button_props
             .iter()
             .map(|props| {

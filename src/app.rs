@@ -1,6 +1,7 @@
 use gloo::utils::document;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
+use serde_wasm_bindgen::to_value;
 use shared::Project;
 use sidebar::buttons::Button;
 use statistic::StatisticWindow;
@@ -121,14 +122,13 @@ pub fn app() -> Html {
                     if let Some(mut path) = project_path {
                         path.push("Chapters");
                         path.push(
-                            &state
+                            state
                                 .project
                                 .as_ref()
                                 .unwrap()
                                 .chapters
                                 .get(state.project.as_ref().unwrap().active_chapter.unwrap())
-                                .unwrap()
-                                .name,
+                                .unwrap(),
                         );
                         path.push("Content.md");
 
@@ -295,8 +295,10 @@ pub fn app() -> Html {
     {
         let on_load = on_load.clone();
         let modal = modal.clone();
+        let text_input_ref = text_input_ref.clone();
         use_effect_with(state, move |state| {
             if let Some(project) = state.project.clone() {
+                let project_clone = project.clone();
                 spawn_local(async move {
                     let _project_jsvalue = invoke(
                         "write_project_config",
@@ -307,6 +309,33 @@ pub fn app() -> Html {
                     )
                     .await;
                 });
+                if let Some(active_chapter) = project_clone.active_chapter {
+                    let project = project_clone.clone();
+                    spawn_local(async move {
+                        let mut content_path = project.path.clone();
+                        content_path.push("Chapters");
+                        content_path
+                            .push(project_clone.chapters.get(active_chapter).unwrap().clone());
+                        content_path.push("Content");
+                        content_path.set_extension("md");
+                        let content = invoke(
+                            "get_file_content",
+                            to_value(&PathArgs {
+                                path: content_path.to_str().unwrap().to_string(),
+                            })
+                            .unwrap(),
+                        )
+                        .await
+                        .as_string()
+                        .unwrap();
+
+                        if let Some(input_element) = text_input_ref.cast::<HtmlElement>() {
+                            input_element.set_inner_text(content.as_str());
+                            let _ =
+                                input_element.dispatch_event(&InputEvent::new("input").unwrap());
+                        }
+                    });
+                }
             } else {
                 modal.set(html! {
                     <Modal
@@ -349,7 +378,7 @@ pub fn app() -> Html {
             <div class="modal-wrapper">{ (*modal).clone() }</div>
             <style id="dynamic-style" />
             <Toolbar />
-            <div class="h-12 flex justify-left items-center p-2 bg-crust">
+            <div class="h-8 flex justify-left items-center p-2 bg-crust">
                 <Button
                     callback={open_modal}
                     icon={IconId::LucideFilePlus}
@@ -375,12 +404,8 @@ pub fn app() -> Html {
                 <div class="w-[1px] h-[20px] bg-subtext my-0 mx-1 " />
                 <TextStylingControls />
             </div>
-            <div id="main_content" class="flex flex-grow m-3">
-                <div class="flex flex-col min-w-[18rem] overflow-y-auto bg-crust">
-                    <div class="flex-grow">
-                        { html!{<SideBarWrapper input_ref={text_input_ref.clone()} />} }
-                    </div>
-                </div>
+            <div id="main_content" class="flex flex-1 grow min-h-0 m-3">
+                <div class="h-full min-w-[18rem] bg-crust">{ html!{<SideBarWrapper />} }</div>
                 <Notepads pages_ref={pages_ref.clone()} text_input_ref={text_input_ref} />
             </div>
             <div
@@ -422,7 +447,7 @@ fn apply_settings() {
 
         let theme = settings.theme;
 
-        println!("{:?}", theme.clone());
+        println!("{theme:?}");
 
         let _ = Timeout::new(10, {
             move || {
