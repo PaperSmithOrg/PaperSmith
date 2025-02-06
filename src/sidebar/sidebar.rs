@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::path::PathBuf;
 
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen_futures::spawn_local;
@@ -12,7 +13,12 @@ use yewdux::prelude::*;
 pub mod buttons;
 pub use buttons::{ButtonContainer, Props as ButtonProps};
 
+#[path = "renaming-modal.rs"]
+mod renaming_modal;
+use renaming_modal::RenamingModal;
+
 use crate::app::invoke;
+use crate::app::modal::Modal;
 use crate::app::wizard::PathArgs;
 use crate::app::State;
 
@@ -25,21 +31,25 @@ fn get_file_name(path: &Path) -> String {
         .to_string()
 }
 
+#[derive(Properties, PartialEq)]
+pub struct Props {
+    pub modal: UseStateHandle<VNode>,
+}
+
 #[function_component(SideBarWrapper)]
-pub fn sidebarwrapper() -> Html {
+pub fn sidebarwrapper(Props { modal }: &Props) -> Html {
     let (state, _dispatch) = use_store::<State>();
     if state.project.is_none() {
         html! {}
     } else {
-        html! { <SideBar /> }
+        html! { <SideBar modal={modal.clone()} /> }
     }
 }
 
 #[function_component(SideBar)]
-pub fn sidebar() -> Html {
+pub fn sidebar(Props { modal }: &Props) -> Html {
     let (state, dispatch) = use_store::<State>();
     let title = use_state(|| get_file_name(&(state.project).as_ref().unwrap().path));
-    let name_display = use_state(|| html! { (*title).clone() });
     let chapters = use_state(Vec::<VNode>::new);
     let tabs = vec!["Overview".to_string(), "Notes".to_string()];
     let note_types = vec!["Project Notes".to_string(), "Chapter Notes".to_string()];
@@ -48,11 +58,9 @@ pub fn sidebar() -> Html {
 
     {
         let title = title.clone();
-        let name_display = name_display.clone();
         let state = state.clone();
         use_effect_with(state.clone(), move |_| {
             title.set(get_file_name(&(state.project).as_ref().unwrap().path));
-            name_display.set(html! { get_file_name(&(state.project).as_ref().unwrap().path) });
         });
     }
 
@@ -60,6 +68,7 @@ pub fn sidebar() -> Html {
         let chapters = chapters.clone();
 
         let state = state.clone();
+        let modal = modal.clone();
         use_effect_with(state.clone(), move |_| {
             chapters.set(Vec::new());
 
@@ -75,6 +84,7 @@ pub fn sidebar() -> Html {
                                 chapter={chapter.clone()}
                                 index={index}
                                 active={project_data.active_chapter == Some(index)}
+                                modal={modal.clone()}
                             />
                         }
                     })
@@ -87,7 +97,6 @@ pub fn sidebar() -> Html {
 
     let on_add_chapter = {
         let state = state.clone();
-        let dispatch = dispatch.clone();
         Callback::from(move |_: MouseEvent| {
             let state = state.clone();
             let dispatch = dispatch.clone();
@@ -129,6 +138,47 @@ pub fn sidebar() -> Html {
         })
     };
 
+    let on_extras = {
+        let state = state.clone();
+        Callback::from(move |_| {
+            let state = state.clone();
+            spawn_local(async move {
+                let project_clone = state.project.as_ref().unwrap().clone();
+                let mut extras_path = project_clone.path.clone();
+                extras_path.push("Extras");
+                invoke(
+                    "open_explorer",
+                    to_value(&PathArgs {
+                        path: extras_path.to_str().unwrap().to_string(),
+                    })
+                    .unwrap(),
+                )
+                .await;
+            });
+        })
+    };
+
+    let on_close = {
+        let modal = modal.clone();
+        Callback::from(move |_| modal.set(html!()))
+    };
+    let rename_callback = {
+        let title = title.clone();
+        let modal = modal.clone();
+        Callback::from(move |e: MouseEvent| {
+            e.stop_propagation();
+            let title = title.clone();
+            let on_close = on_close.clone();
+            modal.set(html! {
+                <RenamingModal
+                    old_name={(*title).clone()}
+                    closing_callback={on_close}
+                    is_project=true
+                />
+            });
+        })
+    };
+
     html! {
         <>
             <div
@@ -136,9 +186,10 @@ pub fn sidebar() -> Html {
                 class="select-none cursor-default transition h-full overflow-auto flex flex-col"
             >
                 <div
-                    class="items-center overflow-hidden text-2xl text-subtext hover:text-text my-2 shrink-0"
+                    class="items-center overflow-hidden text-2xl text-subtext hover:text-text my-2 shrink-0 cursor-pointer"
+                    ondblclick={rename_callback}
                 >
-                    { (*name_display).clone() }
+                    { (*title).clone() }
                 </div>
                 <div class="w-full flex my-2">
                     <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
@@ -147,7 +198,10 @@ pub fn sidebar() -> Html {
                     <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
                         { "Statistics" }
                     </div>
-                    <div class="rounded-full bg-base py-2 px-4 cursor-pointer grow">
+                    <div
+                        class="rounded-full bg-base py-2 px-4 cursor-pointer grow"
+                        onclick={on_extras}
+                    >
                         { "Extras" }
                     </div>
                 </div>
@@ -156,7 +210,7 @@ pub fn sidebar() -> Html {
                     <div class="overflow-scroll grow shrink">
                         { for (*chapters).clone() }
                         <div
-                            class="w-full hover:bg-base rounded-lg flex justify-center items-center cursor-pointer"
+                            class="w-full hover:bg-mantle rounded-lg flex justify-center items-center cursor-pointer"
                             onclick={on_add_chapter}
                         >
                             <div class="h-16 flex items-center align-center">
@@ -207,9 +261,9 @@ fn tabmenu(TabMenuProps { tabs, active_tab }: &TabMenuProps) -> Html {
                         if index == tabs.len()-1 { "rounded-r-full" } else {""},
                     )}
                     onclick={Callback::from({
-                        let active_tab = active_tab.clone();
-                        let tab_clone = tab.clone();
-                        move |_| active_tab.set(tab_clone.clone())
+                          let active_tab = active_tab.clone();
+                          let tab_clone = tab.clone();
+                          move |_| active_tab.set(tab_clone.clone())
                     })}
                 >
                     { tab }
@@ -226,6 +280,7 @@ struct ChapterProps {
     pub chapter: String,
     pub index: usize,
     pub active: bool,
+    pub modal: UseStateHandle<VNode>,
 }
 
 #[function_component(ChapterComponent)]
@@ -234,12 +289,14 @@ fn chapter(
         chapter,
         index,
         active,
+        modal,
     }: &ChapterProps,
 ) -> Html {
-    let (_state, dispatch) = use_store::<State>();
+    let (state, dispatch) = use_store::<State>();
 
     let on_load = {
         let index = *index;
+        let dispatch = dispatch.clone();
 
         Callback::from(move |_: MouseEvent| {
             let dispatch = dispatch.clone();
@@ -248,15 +305,90 @@ fn chapter(
         })
     };
 
+    let on_close = {
+        let modal = modal.clone();
+        Callback::from(move |_| modal.set(html!()))
+    };
+    let rename_callback = {
+        let chapter = chapter.clone();
+        let modal = modal.clone();
+        let on_close = on_close.clone();
+        Callback::from(move |e: MouseEvent| {
+            e.stop_propagation();
+            let chapter = chapter.clone();
+            let on_close = on_close.clone();
+            modal.set(html! {
+                <RenamingModal old_name={chapter} closing_callback={on_close} is_project=false />
+            });
+        })
+    };
+    let delete_callback = {
+        let modal = modal.clone();
+        let chapter = chapter.clone();
+        let on_delete = {
+            let on_close = on_close.clone();
+            let chapter = chapter.clone();
+            Callback::from(move |_: MouseEvent| {
+                let state = state.clone();
+                let chapter = chapter.clone();
+                let dispatch = dispatch.clone();
+                spawn_local(async move {
+                    let mut complete_path = PathBuf::from(&state.project.as_ref().unwrap().path);
+                    complete_path.push("Chapters");
+                    complete_path.push(&chapter);
+                    let args = PathArgs {
+                        path: complete_path.to_str().unwrap().to_string(),
+                    };
+                    let args = to_value(&args).unwrap();
+                    invoke("delete_path", args).await;
+
+                    if let Some(mut temp_project) = state.project.clone() {
+                        temp_project.chapters.retain(|x| **x != chapter);
+                        dispatch.reduce_mut(|x| x.project = Some(temp_project));
+                    }
+                });
+                on_close.emit(MouseEvent::new("Dummy").unwrap());
+            })
+        };
+        Callback::from(move |e: MouseEvent| {
+            e.stop_propagation();
+            let on_close = on_close.clone();
+            let on_delete = on_delete.clone();
+            let content = html! {
+                <>
+                    <div class="text-xl font-bold">
+                        { format!("Do you really want to delete {}?", chapter) }
+                    </div>
+                    <br />
+                    <div id="footer" class="flex justify-end w-full pt-8">
+                        <button
+                            onclick={on_delete}
+                            class="rounded-lg text-lg px-2 py-1 ml-4 bg-primary text-crust hover:scale-105 border-0"
+                        >
+                            { "Confirm" }
+                        </button>
+                        <button
+                            onclick={on_close}
+                            class="rounded-lg text-lg px-2 py-1 ml-4 bg-secondary text-crust hover:scale-105 border-0"
+                        >
+                            { "Cancel" }
+                        </button>
+                    </div>
+                </>
+            };
+            modal.set(html! { <Modal content={content} /> });
+        })
+    };
+
     let button_props = vec![
         ButtonProps {
-            callback: Callback::from(|_: MouseEvent| {}),
+            callback: rename_callback,
             icon: IconId::LucideEdit3,
             title: "Rename".to_string(),
             size: 1.3,
         },
         ButtonProps {
-            callback: Callback::from(|_: MouseEvent| {}),
+            callback: delete_callback,
             icon: IconId::LucideTrash2,
             title: "Delete".to_string(),
             size: 1.3,

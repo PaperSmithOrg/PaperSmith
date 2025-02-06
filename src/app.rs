@@ -405,7 +405,9 @@ pub fn app() -> Html {
                 <TextStylingControls />
             </div>
             <div id="main_content" class="flex flex-1 grow min-h-0 m-3">
-                <div class="h-full min-w-[18rem] bg-crust">{ html!{<SideBarWrapper />} }</div>
+                <div class="h-full min-w-[18rem] bg-crust">
+                    { html!{<SideBarWrapper modal={modal.clone()}/>} }
+                </div>
                 <Notepads pages_ref={pages_ref.clone()} text_input_ref={text_input_ref} />
             </div>
             <div
