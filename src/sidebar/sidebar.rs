@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen_futures::spawn_local;
+use web_sys::HtmlTextAreaElement;
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
 use yew_icons::Icon;
@@ -20,6 +21,7 @@ use renaming_modal::RenamingModal;
 use crate::app::invoke;
 use crate::app::modal::Modal;
 use crate::app::wizard::PathArgs;
+use crate::app::FileWriteData;
 use crate::app::State;
 
 fn get_file_name(path: &Path) -> String {
@@ -55,6 +57,41 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
     let note_types = vec!["Project Notes".to_string(), "Chapter Notes".to_string()];
     let tab = use_state(|| tabs[0].clone());
     let note_tab = use_state(|| note_types[0].clone());
+    let note_ref = use_node_ref();
+
+    {
+        let state = state.clone();
+        let note_tab = note_tab.clone();
+        let note_types = note_types.clone();
+        let note_ref = note_ref.clone();
+        use_effect_with((tab.clone(), note_tab.clone()), move |_| {
+            if let Some(input) = note_ref.cast::<HtmlTextAreaElement>() {
+                spawn_local(async move {
+                    let mut note_path = state.project.as_ref().unwrap().path.clone();
+                    if *note_tab != note_types[0] {
+                        note_path.push("Chapters");
+                        let project_ref = state.project.as_ref().unwrap();
+                        note_path.push(
+                            project_ref.chapters[project_ref.active_chapter.unwrap()].clone(),
+                        );
+                    }
+                    note_path.push("Note");
+                    note_path.set_extension("md");
+                    let content = invoke(
+                        "get_file_content",
+                        to_value(&PathArgs {
+                            path: note_path.to_str().unwrap().to_string(),
+                        })
+                        .unwrap(),
+                    )
+                    .await
+                    .as_string()
+                    .unwrap();
+                    input.set_value(&content);
+                });
+            }
+        });
+    }
 
     {
         let title = title.clone();
@@ -179,6 +216,37 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
         })
     };
 
+    let note_input_handler = {
+        let note_tab = note_tab.clone();
+        let note_types = note_types.clone();
+        Callback::from(move |e: InputEvent| {
+            if let Some(input) = e.target_dyn_into::<HtmlTextAreaElement>() {
+                let text = input.value();
+                let mut note_path = state.project.as_ref().unwrap().path.clone();
+                if *note_tab != note_types[0] {
+                    note_path.push("Chapters");
+                    let project_ref = state.project.as_ref().unwrap();
+                    note_path
+                        .push(project_ref.chapters[project_ref.active_chapter.unwrap()].clone());
+                }
+                note_path.push("Note");
+                note_path.set_extension("md");
+                spawn_local(async move {
+                    let write_data = FileWriteData {
+                        path: note_path.to_str().unwrap().to_string(),
+                        content: text,
+                    };
+
+                    invoke(
+                        "write_to_file",
+                        serde_wasm_bindgen::to_value(&write_data).unwrap(),
+                    )
+                    .await;
+                });
+            }
+        })
+    };
+
     html! {
         <>
             <div
@@ -187,7 +255,7 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
             >
                 <div
                     class="items-center overflow-hidden text-2xl text-subtext hover:text-text my-2 shrink-0 cursor-pointer"
-                    ondblclick={rename_callback}
+                    onclick={rename_callback}
                 >
                     { (*title).clone() }
                 </div>
@@ -225,6 +293,11 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
                     </div>
                 } else {
                     <TabMenu tabs={note_types} active_tab={note_tab.clone()} />
+                    <textarea
+                        class="h-full overflow-scroll grow shrink bg-base resize-none border-0 focus:ring-0 text-text rounded-lg"
+                        oninput={note_input_handler}
+                        ref={note_ref}
+                    />
                 }
             </div>
         </>
@@ -357,7 +430,7 @@ fn chapter(
             let content = html! {
                 <>
                     <div class="text-xl font-bold">
-                        { format!("Do you really want to delete {}?", chapter) }
+                        { format!("Do you really want to delete \"{}\"?", chapter) }
                     </div>
                     <br />
                     <div id="footer" class="flex justify-end w-full pt-8">

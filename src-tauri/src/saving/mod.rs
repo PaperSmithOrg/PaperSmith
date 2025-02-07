@@ -32,7 +32,7 @@ pub fn create_project(path: String) -> Option<Project> {
     let _ = File::create(&path);
     path.pop();
 
-    path.push("Global_Note");
+    path.push("Note");
     path.set_extension("md");
     let _ = File::create(&path);
     path.pop();
