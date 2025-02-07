@@ -24,6 +24,13 @@ use crate::app::wizard::PathArgs;
 use crate::app::FileWriteData;
 use crate::app::State;
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum ChapterStatus {
+    Normal,
+    Active,
+    ActiveChanges,
+}
+
 fn get_file_name(path: &Path) -> String {
     path.to_str()
         .unwrap()
@@ -58,6 +65,7 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
     let tab = use_state(|| tabs[0].clone());
     let note_tab = use_state(|| note_types[0].clone());
     let note_ref = use_node_ref();
+    let changes = use_state(|| false);
 
     {
         let state = state.clone();
@@ -115,12 +123,20 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
                     .iter()
                     .enumerate()
                     .map(|(index, chapter)| {
+                        let mut status = ChapterStatus::Normal;
+                        if project_data.active_chapter == Some(index) {
+                            if state.changes {
+                                status = ChapterStatus::ActiveChanges;
+                            } else {
+                                status = ChapterStatus::Active;
+                            }
+                        }
                         html! {
                             <ChapterComponent
                                 key={chapter.clone()}
                                 chapter={chapter.clone()}
                                 index={index}
-                                active={project_data.active_chapter == Some(index)}
+                                status={status}
                                 modal={modal.clone()}
                             />
                         }
@@ -356,7 +372,7 @@ fn tabmenu(TabMenuProps { tabs, active_tab }: &TabMenuProps) -> Html {
 struct ChapterProps {
     pub chapter: String,
     pub index: usize,
-    pub active: bool,
+    pub status: ChapterStatus,
     pub modal: UseStateHandle<VNode>,
 }
 
@@ -365,22 +381,11 @@ fn chapter(
     ChapterProps {
         chapter,
         index,
-        active,
+        status,
         modal,
     }: &ChapterProps,
 ) -> Html {
     let (state, dispatch) = use_store::<State>();
-
-    let on_load = {
-        let index = *index;
-        let dispatch = dispatch.clone();
-
-        Callback::from(move |_: MouseEvent| {
-            let dispatch = dispatch.clone();
-
-            dispatch.reduce_mut(|x| x.project.as_mut().unwrap().active_chapter = Some(index));
-        })
-    };
 
     let on_close = {
         let modal = modal.clone();
@@ -402,6 +407,9 @@ fn chapter(
     let delete_callback = {
         let modal = modal.clone();
         let chapter = chapter.clone();
+        let dispatch = dispatch.clone();
+        let state = state.clone();
+        let on_close = on_close.clone();
         let on_delete = {
             let on_close = on_close.clone();
             let chapter = chapter.clone();
@@ -457,6 +465,58 @@ fn chapter(
         })
     };
 
+    let on_load = {
+        let index = *index;
+        let dispatch = dispatch.clone();
+
+        Callback::from(move |_: MouseEvent| {
+            let dispatch = dispatch.clone();
+            dispatch.reduce_mut(|x| {
+                x.project.as_mut().unwrap().active_chapter = Some(index);
+                x.changes = false;
+            });
+        })
+    };
+    let on_load_wrapper = {
+        let on_load = on_load.clone();
+        let state = state.clone();
+
+        let load_modal = html! {
+            <>
+                <div class="text-xl font-bold">
+                    { format!("You have unsaved changes! do you really want to continue?") }
+                </div>
+                <br />
+                <div id="footer" class="flex justify-end w-full pt-8">
+                    <button
+                        onclick={on_load.clone()}
+                        class="rounded-lg text-lg px-2 py-1 ml-4 bg-primary text-crust hover:scale-105 border-0"
+                    >
+                        { "Continue" }
+                    </button>
+                    <button
+                        onclick={on_close.clone()}
+                        class="rounded-lg text-lg px-2 py-1 ml-4 bg-secondary text-crust hover:scale-105 border-0"
+                    >
+                        { "Cancel" }
+                    </button>
+                </div>
+            </>
+        };
+        let modal = modal.clone();
+        Callback::from(move |_: MouseEvent| {
+            let load_modal = load_modal.clone();
+            let state = state.clone();
+            let modal = modal.clone();
+            let on_load = on_load.clone();
+            if state.changes {
+                modal.set(html! { <Modal content={load_modal} /> });
+            } else {
+                on_load.emit(MouseEvent::new("Dummy").unwrap());
+            }
+        })
+    };
+
     let button_props = vec![
         ButtonProps {
             callback: rename_callback,
@@ -474,11 +534,15 @@ fn chapter(
 
     html! {
         <button
-            class={classes!("hover:bg-mantle", "flex", "flex-row","items-center", "rounded-lg", "cursor-pointer", "group/buttoncontainer", "pr-3", "w-full", "border-0", "text-inherit", "text-[length:inherit]", if *active {"bg-base"} else {"bg-crust"})}
-            onclick={on_load}
+            class={classes!("hover:bg-mantle", "flex", "flex-row","items-center", "rounded-lg", "cursor-pointer", "group/buttoncontainer", "pr-3", "w-full", "border-0", "text-inherit", "text-[length:inherit]",
+                if *status==ChapterStatus::Active || *status==ChapterStatus::ActiveChanges {"bg-base"} else {"bg-crust"},
+                if *status==ChapterStatus::ActiveChanges {"italic"} else {""}
+            )}
+            onclick={on_load_wrapper}
         >
             <div
-                class={classes!("p-2", "w-8", "h-8", "rounded-lg", "text-mantle", "m-2", "justify-center", "items-center", "flex", "text-2xl", if *active {"bg-secondary"} else {"bg-primary"})}
+                class={classes!("p-2", "w-8", "h-8", "rounded-lg", "text-mantle", "m-2", "justify-center", "items-center", "flex", "text-2xl",
+                    if *status==ChapterStatus::Active || *status==ChapterStatus::ActiveChanges {"bg-secondary"} else {"bg-primary"})}
             >
                 { *index+1 }
             </div>

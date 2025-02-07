@@ -82,6 +82,7 @@ pub struct FileWriteData {
 pub struct State {
     project: Option<Project>,
     settings: Option<Settings>,
+    changes: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -143,46 +144,32 @@ pub fn app() -> Html {
                         )
                         .await;
 
-                        modal.set(html! {
-                            /*
-                            <Modal
-                                content={html! {
-                                    <div>{ "Successfully saved" }</div>
-                                }}
-                                button_configs={
-                                    vec![
-                                        ModalButtonProps {
-                                            text: "Close".to_string(),
-                                            text_color: "white".to_string(),
-                                            bg_color: "green".to_string(),
-                                            callback: {
-                                                let modal = modal.clone();
-                                                Callback::from(move |_| modal.set(html!()))
-                                            }
-                                        }
-                                    ]
-                                }
-                            />
-                            */
-                        });
+                        // modal.set(html! {});
                     }
                 }
             });
         })
     };
 
-    let save = Callback::from(move |_: MouseEvent| save_fn.emit(()));
+    let save = {
+        let dispatch = dispatch.clone();
+        Callback::from(move |_: MouseEvent| {
+            save_fn.emit(());
+            dispatch.reduce_mut(|x| x.changes = false);
+        })
+    };
     {
         let save = save.clone();
         use_interval(
             move || {
                 save.emit(MouseEvent::new("Dummy").unwrap());
             },
-            if let Some(settings) = state.settings.as_ref() {
-                settings.interval
-            } else {
-                Settings::default().interval
-            },
+            // if let Some(settings) = state.settings.as_ref() {
+            //     settings.interval
+            // } else {
+            //     Settings::default().interval
+            // },
+            5 * 60 * 1000,
         ); // 300,000 ms = 5 minutes
     }
 
@@ -197,7 +184,7 @@ pub fn app() -> Html {
                                 let modal = modal.clone();
                                 Callback::from(move |_| modal.set(html!()))
                             }
-                    closable={true}
+                            closable={true}
                         />
                     }}
                 />
@@ -332,7 +319,7 @@ pub fn app() -> Html {
                         if let Some(input_element) = text_input_ref.cast::<HtmlElement>() {
                             input_element.set_inner_text(content.as_str());
                             let _ =
-                                input_element.dispatch_event(&InputEvent::new("input").unwrap());
+                                input_element.dispatch_event(&InputEvent::new("Dummy").unwrap());
                         }
                     });
                 }
