@@ -66,39 +66,6 @@ body {
   margin-right: 0;
 }
 
-.zoom-out-button-edit {
-  background-color: transparent;
-  border-radius: 5px;
-  transition:
-    background-color 0.3s,
-    color 0.3s;
-  margin-right: 5px;
-  user-select: none;
-}
-
-.zoom-out-button-edit:hover {
-  /*background-color: rgba(var(--overlay0), 1);*/
-  /*color: rgba(209, 213, 219, 1);*/
-  padding: 1px;
-  border-radius: 5px;
-}
-
-.zoom-in-button-edit {
-  background-color: transparent;
-  border-radius: 5px;
-  transition:
-    background-color 0.3s,
-    color 0.3s;
-  user-select: none;
-}
-
-.zoom-in-button-edit:hover {
-  /*background-color: rgba(var(--overlay0), 1);*/
-  /*color: rgba(209, 213, 219, 1);*/
-  padding: 1px;
-  border-radius: 5px;
-}
-
 /* Scrollbar --------------------------------------------------------------- */
 
 ::-webkit-scrollbar {
@@ -144,3 +111,4 @@ img {
   border-radius: 8px;
   padding: 5px;
 }
+

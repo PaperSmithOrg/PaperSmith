@@ -44,6 +44,7 @@ pub fn notepads(
                     style={format!("font-size: {}px;", *font_size_edit)}
                     contenteditable="true"
                     oninput={on_text_input}
+                    tabindex="0"
                 />
             </div>
             <div

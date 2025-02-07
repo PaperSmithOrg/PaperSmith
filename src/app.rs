@@ -345,24 +345,24 @@ pub fn app() -> Html {
                         {"Please select or create a project"}
                     </div>
                     <div class="flex justify-evenly w-full text-xl">
-                        <div
-                            class="bg-primary text-mantle p-2 rounded-lg cursor-pointer"
+                        <button
+                            class="bg-primary text-mantle p-2 rounded-lg cursor-pointer border-0 text-inherit text-[length:inherit] hover:ring-1 hover:ring-primary"
                             onclick={let on_load = on_load.clone();
                             Callback::from(move |e: MouseEvent| {
                                 on_load.emit(e);
                             })}
                         >
                             { "Open Project" }
-                        </div>
-                        <div
-                            class="bg-secondary text-mantle p-2 rounded-lg cursor-pointer"
+                        </button>
+                        <button
+                            class="bg-secondary text-mantle p-2 rounded-lg cursor-pointer border-0 text-inherit text-[length:inherit] hover:ring-1 hover:ring-secondary"
                             onclick={let open_modal2 = open_modal2.clone();
                             Callback::from(move |e: MouseEvent| {
                                 open_modal2.emit(e);
                             })}
                         >
                             { "Create Project" }
-                        </div>
+                        </button>
                     </div>
                 </div>
                                 }}

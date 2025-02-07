@@ -170,7 +170,7 @@ pub fn renamingmodal(
                 <input
                     oninput={new_name_input}
                     ref={new_name_ref}
-                    class="outline-none w-full bg-crust text-text p-2 rounded-tl-lg rounded-bl-lg border-0 font-standard text-base"
+                    class="w-full bg-crust text-text p-2 rounded-tl-lg rounded-bl-lg border-0 font-standard text-base"
                 />
             </div>
             <div id="footer" class="flex justify-end w-full pt-8">

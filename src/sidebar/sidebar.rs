@@ -54,7 +54,7 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
     let title = use_state(|| get_file_name(&(state.project).as_ref().unwrap().path));
     let chapters = use_state(Vec::<VNode>::new);
     let tabs = vec!["Overview".to_string(), "Notes".to_string()];
-    let note_types = vec!["Project Notes".to_string(), "Chapter Notes".to_string()];
+    let note_types = vec!["Project".to_string(), "Chapter".to_string()];
     let tab = use_state(|| tabs[0].clone());
     let note_tab = use_state(|| note_types[0].clone());
     let note_ref = use_node_ref();
@@ -251,34 +251,35 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
         <>
             <div
                 id="file-explorer"
-                class="select-none cursor-default transition h-full overflow-auto flex flex-col"
+                class="select-none cursor-default transition h-full overflow-auto flex flex-col px-2"
             >
-                <div
-                    class="items-center overflow-hidden text-2xl text-subtext hover:text-text my-2 shrink-0 cursor-pointer"
+                <button
+                    class="items-center overflow-hidden text-2xl text-subtext hover:text-text my-2 shrink-0 cursor-pointer border-0 rounded-full bg-crust text-start"
                     onclick={rename_callback}
                 >
                     { (*title).clone() }
-                </div>
-                <div class="w-full flex my-2">
-                    <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
-                        { "Settings" }
-                    </div>
-                    <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
-                        { "Statistics" }
-                    </div>
-                    <div
-                        class="rounded-full bg-base py-2 px-4 cursor-pointer grow"
+                </button>
+                <div class="w-full flex my-2 text-center">
+                    // <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
+                    //     { "Settings" }
+                    // </div>
+                    // <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
+                    //     { "Statistics" }
+                    // </div>
+                    // Space for future buttons
+                    <button
+                        class="rounded-full bg-base py-2 px-4 cursor-pointer grow border-0 text-inherit text-[length:inherit] hover:bg-mantle"
                         onclick={on_extras}
                     >
                         { "Extras" }
-                    </div>
+                    </button>
                 </div>
                 <TabMenu tabs={tabs} active_tab={tab.clone()} />
                 if *tab == "Overview" {
-                    <div class="overflow-scroll grow shrink">
+                    <div class="overflow-scroll grow shrink p-2">
                         { for (*chapters).clone() }
-                        <div
-                            class="w-full hover:bg-mantle rounded-lg flex justify-center items-center cursor-pointer"
+                        <button
+                            class="w-full hover:bg-mantle bg-crust rounded-lg flex justify-center items-center cursor-pointer border-0 text-inherit text-[length:inherit] "
                             onclick={on_add_chapter}
                         >
                             <div class="h-16 flex items-center align-center">
@@ -289,7 +290,7 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
                                     title="Add Chapter"
                                 />
                             </div>
-                        </div>
+                        </button>
                     </div>
                 } else {
                     <TabMenu tabs={note_types} active_tab={note_tab.clone()} />
@@ -319,6 +320,9 @@ fn tabmenu(TabMenuProps { tabs, active_tab }: &TabMenuProps) -> Html {
         "flex",
         "flex-1",
         "justify-center",
+        "border-0",
+        "text-inherit",
+        "text-[length:inherit]",
     ];
 
     let tabs = tabs
@@ -326,9 +330,9 @@ fn tabmenu(TabMenuProps { tabs, active_tab }: &TabMenuProps) -> Html {
         .enumerate()
         .map(|(index, tab)| {
             html! {
-                <div
+                <button
                     class={classes!(standard_classes.clone(),
-                        if **active_tab == *tab { "bg-primary text-mantle" } else { "bg-base" },
+                        if **active_tab == *tab { "bg-primary text-mantle" } else { "bg-base hover:bg-mantle" },
                         if tabs.len() == 1 { "rounded-full"} else {""},
                         if index == 0 { "rounded-l-full" } else {""},
                         if index == tabs.len()-1 { "rounded-r-full" } else {""},
@@ -340,7 +344,7 @@ fn tabmenu(TabMenuProps { tabs, active_tab }: &TabMenuProps) -> Html {
                     })}
                 >
                     { tab }
-                </div>
+                </button>
             }
         })
         .collect::<Vec<VNode>>();
@@ -469,8 +473,8 @@ fn chapter(
     ];
 
     html! {
-        <div
-            class={classes!("hover:bg-mantle", "flex", "flex-row", "rounded-lg", "cursor-pointer", "group/buttoncontainer", "pr-3", if *active {"bg-base"} else {""})}
+        <button
+            class={classes!("hover:bg-mantle", "flex", "flex-row","items-center", "rounded-lg", "cursor-pointer", "group/buttoncontainer", "pr-3", "w-full", "border-0", "text-inherit", "text-[length:inherit]", if *active {"bg-base"} else {"bg-crust"})}
             onclick={on_load}
         >
             <div
@@ -480,6 +484,6 @@ fn chapter(
             </div>
             <div class={classes!("flex", "items-center")}>{ chapter.clone() }</div>
             <ButtonContainer button_props={button_props} />
-        </div>
+        </button>
     }
 }
