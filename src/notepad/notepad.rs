@@ -35,9 +35,9 @@ pub fn notepads(
         Callback::from(move |e: InputEvent| {
             if let Some(input) = text_input_ref.cast::<HtmlElement>() {
                 let inner_text = input.inner_text();
-                gloo_console::log!(format!("Printing text: {}", &inner_text));
+                // gloo_console::log!(format!("Printing text: {}", &inner_text));
                 let new_lines: Vec<String> = inner_text.lines().map(String::from).collect();
-                if e.type_() != "Dummy" {
+                if e.data().is_some() {
                     dispatch.reduce_mut(|x| x.changes = true);
                 }
                 //lines.set(new_lines);

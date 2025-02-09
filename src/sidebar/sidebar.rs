@@ -65,7 +65,6 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
     let tab = use_state(|| tabs[0].clone());
     let note_tab = use_state(|| note_types[0].clone());
     let note_ref = use_node_ref();
-    let changes = use_state(|| false);
 
     {
         let state = state.clone();
@@ -467,7 +466,6 @@ fn chapter(
 
     let on_load = {
         let index = *index;
-        let dispatch = dispatch.clone();
 
         Callback::from(move |_: MouseEvent| {
             let dispatch = dispatch.clone();
@@ -477,10 +475,16 @@ fn chapter(
             });
         })
     };
-    let on_load_wrapper = {
+    let on_load_and_close = {
         let on_load = on_load.clone();
-        let state = state.clone();
+        let on_close = on_close.clone();
 
+        Callback::from(move |_: MouseEvent| {
+            on_load.emit(MouseEvent::new("Dummy").unwrap());
+            on_close.emit(MouseEvent::new("Dummy").unwrap());
+        })
+    };
+    let on_load_wrapper = {
         let load_modal = html! {
             <>
                 <div class="text-xl font-bold">
@@ -489,7 +493,7 @@ fn chapter(
                 <br />
                 <div id="footer" class="flex justify-end w-full pt-8">
                     <button
-                        onclick={on_load.clone()}
+                        onclick={on_load_and_close.clone()}
                         class="rounded-lg text-lg px-2 py-1 ml-4 bg-primary text-crust hover:scale-105 border-0"
                     >
                         { "Continue" }

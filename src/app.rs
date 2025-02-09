@@ -101,13 +101,11 @@ pub fn app() -> Html {
 
     let save_fn = {
         let text_input_ref = text_input_ref.clone();
-        let modal = modal.clone();
         let state = state.clone();
 
         Callback::from(move |()| {
             let text_input_ref = text_input_ref.clone();
             let project_path = project_path.clone();
-            let modal = modal.clone();
             let state = state.clone();
 
             spawn_local(async move {
@@ -283,8 +281,8 @@ pub fn app() -> Html {
         let on_load = on_load.clone();
         let modal = modal.clone();
         let text_input_ref = text_input_ref.clone();
-        use_effect_with(state, move |state| {
-            if let Some(project) = state.project.clone() {
+        use_effect_with(state.project.clone(), move |project| {
+            if let Some(project) = project.clone() {
                 let project_clone = project.clone();
                 spawn_local(async move {
                     let _project_jsvalue = invoke(
@@ -318,8 +316,14 @@ pub fn app() -> Html {
 
                         if let Some(input_element) = text_input_ref.cast::<HtmlElement>() {
                             input_element.set_inner_text(content.as_str());
-                            let _ =
-                                input_element.dispatch_event(&InputEvent::new("Dummy").unwrap());
+
+                            // gloo_console::log!("Setting Textarea content");
+                            let _result =
+                                input_element.dispatch_event(&InputEvent::new("input").unwrap());
+                            // match result {
+                            //     Ok(x) => gloo_console::log!(format!("{}", x)),
+                            //     Err(x) => gloo_console::log!(x),
+                            // }
                         }
                     });
                 }
