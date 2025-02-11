@@ -48,10 +48,25 @@ pub struct Props {
 #[function_component(SideBarWrapper)]
 pub fn sidebarwrapper(Props { modal }: &Props) -> Html {
     let (state, _dispatch) = use_store::<State>();
+    let open = use_state(|| true);
+    let toggle = {
+        let open = open.clone();
+        Callback::from(move |_| open.set(!*open))
+    };
     if state.project.is_none() {
         html! {}
     } else {
-        html! { <SideBar modal={modal.clone()} /> }
+        html! {
+            <div class="flex h-full w-full flex-row relative">
+                if *open {
+                    <SideBar modal={modal.clone()} />
+                }
+                <button
+                    class="absolute right-0 w-2 bg-transparent p-0 border-y-0 border-transparent h-full cursor-pointer border-solid hover:border-x-2 hover:border-subtext"
+                    ondblclick={toggle}
+                />
+            </div>
+        }
     }
 }
 
@@ -266,7 +281,7 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
         <>
             <div
                 id="file-explorer"
-                class="select-none cursor-default transition h-full overflow-auto flex flex-col px-2"
+                class="select-none cursor-default transition h-full overflow-auto flex flex-col px-2 min-w-[18rem]"
             >
                 <button
                     class="items-center overflow-hidden text-2xl text-subtext hover:text-text my-2 shrink-0 cursor-pointer border-0 rounded-full bg-crust text-start"
