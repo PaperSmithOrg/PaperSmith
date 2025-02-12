@@ -4,7 +4,7 @@ use buttons::Button;
 use deleting::get_delete_callback;
 use serde_wasm_bindgen::to_value;
 use shared::Chapter;
-use wasm_bindgen_futures::spawn_local;
+use yew::platform::spawn_local;
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::virtual_dom::VNode;

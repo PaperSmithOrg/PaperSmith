@@ -4,7 +4,7 @@ use std::rc::Rc;
 use gloo_timers::callback::Timeout;
 use serde::Serialize;
 use serde_wasm_bindgen::to_value;
-use wasm_bindgen_futures::spawn_local;
+use yew::platform::spawn_local;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew::{virtual_dom::VNode, Callback, MouseEvent, NodeRef, UseStateHandle};

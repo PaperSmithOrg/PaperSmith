@@ -1,6 +1,6 @@
 use gloo_timers::callback::Timeout;
 use serde_wasm_bindgen::to_value;
-use wasm_bindgen_futures::spawn_local;
+use yew::platform::spawn_local;
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew_icons::IconId;

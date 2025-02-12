@@ -1,7 +1,7 @@
 use gloo::utils::document;
 use serde_json::json;
 use wasm_bindgen::{JsCast, JsValue};
-use wasm_bindgen_futures::spawn_local;
+use yew::platform::spawn_local;
 use web_sys::HtmlDocument;
 use web_sys::HtmlSelectElement;
 use yew::prelude::*;

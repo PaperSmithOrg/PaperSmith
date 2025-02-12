@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use serde_wasm_bindgen::to_value;
-use wasm_bindgen_futures::spawn_local;
+use yew::platform::spawn_local;
 use yew::{Callback, MouseEvent};
 use yewdux::Dispatch;
 

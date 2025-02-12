@@ -4,7 +4,7 @@ use serde_wasm_bindgen::to_value;
 use shared::Project;
 use std::path::PathBuf;
 use wasm_bindgen::JsValue;
-use wasm_bindgen_futures::spawn_local;
+use yew::platform::spawn_local;
 use web_sys::{HtmlButtonElement, HtmlInputElement};
 use yew::prelude::*;
 use yew_icons::{Icon, IconId};
