@@ -1,6 +1,7 @@
 use gloo::utils::document;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
+use serde_wasm_bindgen::from_value;
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
@@ -83,7 +84,6 @@ pub fn app() -> Html {
     let (state, dispatch) = use_store::<State>();
     let modal = use_state(|| html!());
 
-    let project_path = state.project.as_ref().map(|proj| proj.path.clone());
     let text_input_ref = use_node_ref();
     let pages_ref = use_node_ref();
 
@@ -93,7 +93,6 @@ pub fn app() -> Html {
 
         Callback::from(move |()| {
             let text_input_ref = text_input_ref.clone();
-            let project_path = project_path.clone();
             let state = state.clone();
 
             spawn_local(async move {
@@ -106,32 +105,33 @@ pub fn app() -> Html {
                 if let Some(input_element) = text_input_ref.cast::<HtmlElement>() {
                     let text = input_element.inner_text();
 
-                    if let Some(mut path) = project_path {
-                        path.push("Chapters");
-                        path.push(
-                            state
-                                .project
-                                .as_ref()
-                                .unwrap()
-                                .chapters
-                                .get(state.project.as_ref().unwrap().active_chapter.unwrap())
-                                .unwrap(),
-                        );
-                        path.push("Content.md");
+                    let Some(project) = state.project.as_ref() else {
+                        return;
+                    };
+                    let Some(active_chapter) = project.active_chapter else {
+                        return;
+                    };
+                    let Some(chapter_name) = project.chapters.get(active_chapter) else {
+                        return;
+                    };
 
-                        let write_data = FileWriteData {
-                            path: path.to_string_lossy().to_string(),
-                            content: text,
-                        };
+                    let mut path = project.path.clone();
+                    path.push("Chapters");
+                    path.push(chapter_name);
+                    path.push("Content.md");
 
-                        invoke(
-                            "write_to_file",
-                            serde_wasm_bindgen::to_value(&write_data).unwrap(),
-                        )
-                        .await;
+                    let write_data = FileWriteData {
+                        path: path.to_string_lossy().to_string(),
+                        content: text,
+                    };
 
-                        // TODO: add save notifier
-                    }
+                    invoke(
+                        "write_to_file",
+                        serde_wasm_bindgen::to_value(&write_data).unwrap(),
+                    )
+                    .await;
+
+                    // TODO: add save notifier
                 }
             });
         })
@@ -148,65 +148,24 @@ pub fn app() -> Html {
         let save = save.clone();
         use_interval(
             move || {
-                save.emit(MouseEvent::new("Dummy").unwrap());
+                if let Ok(event) = MouseEvent::new("click") {
+                    save.emit(event);
+                }
             },
             5 * 60 * 1000,
         ); // 5 minutes
     }
 
-    let open_modal = {
-        let modal = modal.clone();
-        Callback::from(move |_| {
-            modal.set(html! {
-                <Modal
-                    content={html! {
-                        <ProjectWizard
-                            closing_callback={
-                                let modal = modal.clone();
-                                Callback::from(move |_| modal.set(html!()))
-                            }
-                            closable={true}
-                        />
-                    }}
-                />
-            });
-        })
-    };
-    let open_modal2 = {
-        let modal = modal.clone();
-        Callback::from(move |_: MouseEvent| {
-            modal.set(html! {
-                <Modal
-                    content={html! {
-                        <ProjectWizard
-                            closing_callback={
-                                let modal = modal.clone();
-                                Callback::from(move |_| modal.set(html!()))
-                            }
-
-                    closable={false}
-                        />
-                    }}
-                />
-            });
-        })
-    };
-
     let open_statistics = {
         let modal = modal.clone();
         Callback::from(move |_| {
-            modal.set(html! {
-                <VerticalModal
-                    content={html! {
-                        <StatisticWindow
-                            closing_callback={
-                                let modal = modal.clone();
-                                Callback::from(move |_| modal.set(html!()))
-                            }
-                        />
-                    }}
+            let statistic_window = html! {
+                <StatisticWindow
+                    closing_callback={let modal = modal.clone();
+                        Callback::from(move |_| modal.set(html!()))}
                 />
-            });
+            };
+            modal.set(html! { <VerticalModal content={statistic_window} /> });
         })
     };
 
@@ -247,12 +206,12 @@ pub fn app() -> Html {
 
     let on_undo = Callback::from(move |_| {
         let html_doc: HtmlDocument = document().dyn_into().unwrap();
-        html_doc.exec_command("undo").unwrap();
+        let _ = html_doc.exec_command("undo");
     });
 
     let on_redo = Callback::from(move |_| {
         let html_doc: HtmlDocument = document().dyn_into().unwrap();
-        html_doc.exec_command("redo").unwrap();
+        let _ = html_doc.exec_command("redo");
     });
 
     {
@@ -305,39 +264,31 @@ pub fn app() -> Html {
                         }
                     });
                 }
-            } else {
-                modal.set(html! {
-                    <Modal
-                        content={html! {
+                return;
+            }
+            let blocker = html! {
                 <div class="flex flex-col h-32 w-full justify-between">
-                    <div class="text-3xl text-center">
-                        {"Please select or create a project"}
-                    </div>
+                    <div class="text-3xl text-center">{ "Please select or create a project" }</div>
                     <div class="flex justify-evenly w-full text-xl">
                         <button
                             class="bg-primary text-mantle p-2 rounded-lg cursor-pointer border-0 text-inherit text-[length:inherit] hover:ring-1 hover:ring-primary"
                             onclick={let on_load = on_load.clone();
-                            Callback::from(move |e: MouseEvent| {
-                                on_load.emit(e);
-                            })}
+                        Callback::from(move |e: MouseEvent| {
+                            on_load.emit(e);
+                        })}
                         >
                             { "Open Project" }
                         </button>
                         <button
                             class="bg-secondary text-mantle p-2 rounded-lg cursor-pointer border-0 text-inherit text-[length:inherit] hover:ring-1 hover:ring-secondary"
-                            onclick={let open_modal2 = open_modal2.clone();
-                            Callback::from(move |e: MouseEvent| {
-                                open_modal2.emit(e);
-                            })}
+                            onclick={get_wizard_opener(&modal, false)}
                         >
                             { "Create Project" }
                         </button>
                     </div>
                 </div>
-                                }}
-                    />
-                });
-            }
+            };
+            modal.set(html! { <Modal content={blocker} /> });
         });
     }
 
@@ -348,7 +299,7 @@ pub fn app() -> Html {
             <style id="dynamic-style" />
             <div class="h-8 flex justify-left items-center p-2 bg-crust">
                 <Button
-                    callback={open_modal}
+                    callback={get_wizard_opener(&modal, true)}
                     icon={IconId::LucideFilePlus}
                     title="Create Project"
                     size=1.5
@@ -405,73 +356,36 @@ fn apply_settings() {
 
         path.push_str("/PaperSmith");
 
-        if invoke(
-            "can_create_path",
-            to_value(&PathArgs {
-                path: path.to_string().clone(),
-            })
-            .unwrap(),
-        )
-        .await
-        .as_string()
-        .unwrap()
-        .is_empty()
-        {
-            invoke(
-                "create_directory",
-                to_value(&PathArgs {
-                    path: path.to_string().clone(),
-                })
-                .unwrap(),
-            )
-            .await;
+        if let Ok(args) = to_value(&PathArgs { path: path.clone() }) {
+            let result = invoke("can_create_path", args.clone()).await.as_string();
+            if result.unwrap_or_default().is_empty() {
+                invoke("create_directory", args).await;
+            }
         }
 
         let mut statistics_path = path.clone();
         statistics_path.push_str("/Statistics");
 
-        if invoke(
-            "can_create_path",
-            to_value(&PathArgs {
-                path: statistics_path.to_string().clone(),
-            })
-            .unwrap(),
-        )
-        .await
-        .as_string()
-        .unwrap()
-        .is_empty()
-        {
-            invoke(
-                "create_directory",
-                to_value(&PathArgs {
-                    path: statistics_path.to_string().clone(),
-                })
-                .unwrap(),
-            )
-            .await;
+        if let Ok(args) = to_value(&PathArgs {
+            path: statistics_path.clone(),
+        }) {
+            let result = invoke("can_create_path", args.clone()).await.as_string();
+            if result.unwrap_or_default().is_empty() {
+                invoke("create_directory", args).await;
+            }
         }
 
-        let settings_jsvalue = invoke(
-            "get_settings",
-            serde_wasm_bindgen::to_value(&PathArgs { path }).unwrap(),
-        )
-        .await;
+        if let Ok(args) = to_value(&PathArgs { path }) {
+            let settings_jsvalue = invoke("get_settings", args).await;
 
-        let settings_result = serde_wasm_bindgen::from_value::<Settings>(settings_jsvalue);
+            let Ok(settings) = from_value::<Settings>(settings_jsvalue) else {
+                return;
+            };
 
-        let settings = settings_result.unwrap();
+            println!("{:?}", settings.theme);
 
-        let theme = settings.theme;
-
-        println!("{theme:?}");
-
-        let _ = Timeout::new(10, {
-            move || {
-                switch_theme(&theme);
-            }
-        })
-        .forget();
+            let _ = Timeout::new(10, move || switch_theme(&settings.theme)).forget();
+        }
     });
 }
 
@@ -480,4 +394,18 @@ fn switch_theme(theme: &str) {
     let body = html_doc.body().unwrap();
     let theme2 = theme.to_lowercase().replace(' ', "");
     body.set_class_name(format!("{theme2} bg-crust text-text").as_str());
+}
+
+fn get_wizard_opener(modal: &UseStateHandle<Html>, closable: bool) -> Callback<MouseEvent> {
+    let modal = modal.clone();
+    Callback::from(move |_| {
+        let wizard = html! {
+            <ProjectWizard
+                closing_callback={let modal = modal.clone();
+                    Callback::from(move |_| modal.set(html!()))}
+                closable={closable}
+            />
+        };
+        modal.set(html! { <Modal content={wizard} /> });
+    })
 }
