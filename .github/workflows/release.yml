@@ -3,29 +3,11 @@ name: "publish"
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*.*.*'
 
 jobs:
-  get-version:
-    permissions:
-      contents: write
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: get version
-        id: get_version
-        run: |
-          version=$(cat Cargo.toml | sed -n '/^version =/,/^}/p' | awk '/^version =/{print $NF}' | sed 's/"//g')
-          echo "version=$version" >> $GITHUB_OUTPUT
-          echo $GITHUB_OUTPUT
-
   publish-tauri:
-    needs:
-      - get-version
     permissions:
       contents: write
     strategy:
@@ -64,8 +46,6 @@ jobs:
       - name: add target
         run: |
           rustup target add wasm32-unknown-unknown
-      - name: debug version output
-        run: echo ${{ needs.get-version.outputs.version }}
 
       - name: Set Node.js 16.x
         uses: actions/setup-node@v3
@@ -81,8 +61,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: "app-v${{ needs.get-version.outputs.version }}"
-          releaseName: "App v${{ needs.get-version.outputs.version }}"
+          tagName: "${{  github.ref_name }}"
+          releaseName: "PaperSmith ${{  github.ref_name }}"
           releaseBody: "See the assets to download this version and install."
           iconPath: "src-tauri/icons/icon.png"
           releaseDraft: false
@@ -96,45 +76,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           asset-name: "papersmith-portable"
           file: "target/release/paper-smith"
-          release-name: "App v${{ needs.get-version.outputs.version }}"
-          tag-name: "app-v${{ needs.get-version.outputs.version }}"
-
-      # - name: Generate Hashes
-      #   uses: MCJack123/ghaction-generate-release-hashes@v3
-      #   with:
-      #     hash-type: md5
-      #     file-name: hashes.txt
-      #     get-assets: true
-
-  # generate-hashes:
-  #   permissions:
-  #     contents: write
-
-  #   if: github.event_name != 'workflow_dispatch'
-  #   runs-on: ubuntu-22.04
-  #   needs:
-  #     - publish-tauri
-  #     - get-version
-  #   steps:
-  #     - name: debug hashes output
-  #       run: |
-  #         echo ${{ needs.publish-tauri.outputs.hashes }}
-
-  #     - name: get version number
-  #       id: get_version_number
-  #       uses: pozetroninc/github-action-get-latest-release@master
-  #       with:
-  #         repository: ${{ github.repository }}
-
-  #     - name: Upload Release with MD5 Files
-  #       uses: softprops/action-gh-release@v2.0.8
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         name: "App ${{ steps.get_version_number.outputs.release }}"
-  #         body: "See the assets to download this version and install."
-  #         tag_name: app-${{ steps.get_version_number.outputs.release }}
-  #         draft: false
-  #         prerelease: true
-  #         files: |
-  #           hashes/*
+          release-name: "PaperSmith ${{  github.ref_name }}"
+          tag-name: "${{  github.ref_name }}"
