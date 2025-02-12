@@ -11,7 +11,6 @@ use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
 
-#[path = "wpm.rs"]
 mod wpm;
 use wpm::calculate as calculate_wpm;
 

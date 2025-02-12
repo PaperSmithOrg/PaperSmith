@@ -11,7 +11,6 @@ use yew_icons::Icon;
 use yew_icons::IconId;
 use yewdux::prelude::*;
 
-#[path = "renaming-modal.rs"]
 mod renaming_modal;
 use renaming_modal::RenamingModal;
 

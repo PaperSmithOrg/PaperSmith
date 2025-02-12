@@ -4,9 +4,8 @@ use web_sys::HtmlElement;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[path = "zoom_handlers.rs"]
-mod zoom_edit_container_handlers;
-use zoom_edit_container_handlers::ZoomControls;
+mod zoom_handlers;
+use zoom_handlers::ZoomControls;
 
 use crate::app::State;
 
