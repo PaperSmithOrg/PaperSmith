@@ -288,44 +288,34 @@ pub fn StatisticWindow(
 
     html! {
         <>
-            <div
-                class="absolute top-0 left-0 z-50 bg-mantle/70 h-full w-full flex items-center justify-center text-text"
-            >
-                <div
-                    class="bg-base rounded-lg max-w-[30%] min-w-[30%] max-h-[50%] min-h-[50%] p-8 flex flex-col justify-between"
+            <div>
+                <label for="file-select" class="block text-text font-medium mb-2">
+                    { "Select a file" }
+                </label>
+                <select
+                    ref={select_ref}
+                    class="bg-subtext rounded-lg text-mantle focus:ring-accent border border-primary p-2 w-full"
+                    onchange={onchange}
                 >
-                    <div>
-                        <label for="file-select" class="block text-text font-medium mb-2">
-                            { "Select a file" }
-                        </label>
-                        <select
-                            ref={select_ref}
-                            class="bg-subtext rounded-lg text-mantle focus:ring-accent border border-primary p-2 w-full"
-                            onchange={onchange}
-                        >
-                            { files_to_html(&files) }
-                        </select>
-                    </div>
-                    <div class="mt-4">
-                        <label class="block text-subtext font-medium mb-2">
-                            { "File Content" }
-                        </label>
-                        <div class="bg-mantle p-4 rounded-lg">
-                            { if (*file_content).is_empty() {
+                    { files_to_html(&files) }
+                </select>
+            </div>
+            <div class="mt-4">
+                <label class="block text-subtext font-medium mb-2">{ "File Content" }</label>
+                <div class="bg-mantle p-4 rounded-lg">
+                    { if (*file_content).is_empty() {
                                html! { <p class="text-subtext">{"No content to display."}</p> }
                             } else {
                                html! { <pre class="text-text whitespace-pre-wrap overflow-auto">{ &*file_content }</pre> }
                             } }
-                        </div>
-                    </div>
-                    <button
-                        onclick={on_close}
-                        class="rounded-lg text-lg px-3 py-1 bg-secondary text-crust hover:bg-accent hover:scale-105 border-0 transition-transform self-end shadow-md"
-                    >
-                        { "Close" }
-                    </button>
                 </div>
             </div>
+            <button
+                onclick={on_close}
+                class="rounded-lg text-lg px-3 py-1 bg-secondary text-crust hover:bg-accent hover:scale-105 border-0 transition-transform self-end shadow-md"
+            >
+                { "Close" }
+            </button>
         </>
     }
 }
