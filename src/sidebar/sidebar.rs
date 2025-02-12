@@ -1,41 +1,35 @@
 use std::path::Path;
+use std::path::PathBuf;
 
-use buttons::Button;
-use deleting::get_delete_callback;
 use serde_wasm_bindgen::to_value;
-use shared::Chapter;
+use web_sys::Element;
+use web_sys::HtmlTextAreaElement;
 use yew::platform::spawn_local;
-use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
+use yew_icons::Icon;
 use yew_icons::IconId;
 use yewdux::prelude::*;
-
-#[path = "renaming.rs"]
-mod renaming;
-use renaming::get_rename_callback;
-use renaming::RenameKind;
-
-#[path = "deleting.rs"]
-mod deleting;
-
-#[path = "dropdown.rs"]
-mod dropdown;
-
-use dropdown::Dropdown;
-use dropdown::Type;
 
 #[path = "buttons.rs"]
 pub mod buttons;
 pub use buttons::{ButtonContainer, Props as ButtonProps};
 
+#[path = "renaming-modal.rs"]
+mod renaming_modal;
+use renaming_modal::RenamingModal;
+
 use crate::app::invoke;
+use crate::app::modal::Modal;
 use crate::app::wizard::PathArgs;
+use crate::app::FileWriteData;
 use crate::app::State;
 
-#[derive(Properties, PartialEq)]
-pub struct SideBarProps {
-    pub input_ref: NodeRef,
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum ChapterStatus {
+    Normal,
+    Active,
+    ActiveChanges,
 }
 
 fn get_file_name(path: &Path) -> String {
@@ -47,38 +41,93 @@ fn get_file_name(path: &Path) -> String {
         .to_string()
 }
 
+#[derive(Properties, PartialEq)]
+pub struct Props {
+    pub modal: UseStateHandle<VNode>,
+}
+
 #[function_component(SideBarWrapper)]
-pub fn sidebarwrapper(props: &SideBarProps) -> Html {
+pub fn sidebarwrapper(Props { modal }: &Props) -> Html {
     let (state, _dispatch) = use_store::<State>();
+    let open = use_state(|| true);
+    let toggle = {
+        let open = open.clone();
+        Callback::from(move |_| open.set(!*open))
+    };
     if state.project.is_none() {
         html! {}
     } else {
-        html! { <SideBar input_ref={props.input_ref.clone()} /> }
+        html! {
+            <div class="flex h-full w-full flex-row relative">
+                if *open {
+                    <SideBar modal={modal.clone()} />
+                }
+                <button
+                    class="absolute right-0 w-2 bg-transparent p-0 border-y-0 border-transparent h-full cursor-pointer border-solid hover:border-x-2 hover:border-subtext"
+                    ondblclick={toggle}
+                />
+            </div>
+        }
     }
 }
+
 #[function_component(SideBar)]
-pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
+pub fn sidebar(Props { modal }: &Props) -> Html {
     let (state, dispatch) = use_store::<State>();
-    let rename_input_ref = use_node_ref();
     let title = use_state(|| get_file_name(&(state.project).as_ref().unwrap().path));
-    let name_display = use_state(|| html! { (*title).clone() });
     let chapters = use_state(Vec::<VNode>::new);
+    let tabs = vec!["Overview".to_string(), "Notes".to_string()];
+    let note_types = vec!["Project".to_string(), "Chapter".to_string()];
+    let tab = use_state(|| tabs[0].clone());
+    let note_tab = use_state(|| note_types[0].clone());
+    let note_ref = use_node_ref();
+
+    {
+        let state = state.clone();
+        let note_tab = note_tab.clone();
+        let note_types = note_types.clone();
+        let note_ref = note_ref.clone();
+        use_effect_with((tab.clone(), note_tab.clone()), move |_| {
+            if let Some(input) = note_ref.cast::<HtmlTextAreaElement>() {
+                spawn_local(async move {
+                    let mut note_path = state.project.as_ref().unwrap().path.clone();
+                    if *note_tab != note_types[0] {
+                        note_path.push("Chapters");
+                        let project_ref = state.project.as_ref().unwrap();
+                        note_path.push(
+                            project_ref.chapters[project_ref.active_chapter.unwrap()].clone(),
+                        );
+                    }
+                    note_path.push("Note");
+                    note_path.set_extension("md");
+                    let content = invoke(
+                        "get_file_content",
+                        to_value(&PathArgs {
+                            path: note_path.to_str().unwrap().to_string(),
+                        })
+                        .unwrap(),
+                    )
+                    .await
+                    .as_string()
+                    .unwrap();
+                    input.set_value(&content);
+                });
+            }
+        });
+    }
 
     {
         let title = title.clone();
-        let name_display = name_display.clone();
         let state = state.clone();
         use_effect_with(state.clone(), move |_| {
             title.set(get_file_name(&(state.project).as_ref().unwrap().path));
-            name_display.set(html! { get_file_name(&(state.project).as_ref().unwrap().path) });
         });
     }
 
     {
         let chapters = chapters.clone();
-        let input_ref = input_ref.clone();
-
         let state = state.clone();
+        let modal = modal.clone();
         use_effect_with(state.clone(), move |_| {
             chapters.set(Vec::new());
 
@@ -88,14 +137,25 @@ pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
                     .iter()
                     .enumerate()
                     .map(|(index, chapter)| {
+                        let mut status = ChapterStatus::Normal;
+                        if project_data.active_chapter == Some(index) {
+                            if state.changes {
+                                status = ChapterStatus::ActiveChanges;
+                            } else {
+                                status = ChapterStatus::Active;
+                            }
+                        }
                         html! {
-                            <ChapterComponent
-                                key={chapter.name.clone()}
-                                chapter={chapter.clone()}
-                                index={index}
-                                input_ref={input_ref.clone()}
-                                active={project_data.active_chapter == Some(index)}
-                            />
+                            <div class="relative">
+                                <ChapterComponent
+                                    key={chapter.clone()}
+                                    chapter={chapter.clone()}
+                                    index={index}
+                                    status={status}
+                                    modal={modal.clone()}
+                                />
+                                <DragHandler index={index+1} />
+                            </div>
                         }
                     })
                     .collect::<Vec<VNode>>();
@@ -107,8 +167,7 @@ pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
 
     let on_add_chapter = {
         let state = state.clone();
-        let dispatch = dispatch.clone();
-        Callback::from(move |_| {
+        Callback::from(move |_: MouseEvent| {
             let state = state.clone();
             let dispatch = dispatch.clone();
             spawn_local(async move {
@@ -141,105 +200,21 @@ pub fn sidebar(SideBarProps { input_ref }: &SideBarProps) -> Html {
                 )
                 .await;
                 let mut temp_project = state.project.as_ref().unwrap().clone();
-                temp_project.chapters.push(Chapter {
-                    name: check_path.file_name().unwrap().to_string_lossy().into(),
-                    notes: Vec::new(),
-                    extras: Vec::new(),
-                });
+                temp_project
+                    .chapters
+                    .push(check_path.file_name().unwrap().to_string_lossy().into());
                 dispatch.reduce_mut(|state| state.project = Some(temp_project));
             });
         })
     };
 
-    let button_props = [
-        ButtonProps {
-            callback: get_rename_callback(
-                name_display.clone(),
-                title,
-                rename_input_ref.clone(),
-                state,
-                dispatch,
-                RenameKind::Book,
-                None,
-            ),
-            icon: IconId::LucideEdit3,
-            title: "Rename Book".to_string(),
-            size: 1.,
-        },
-        ButtonProps {
-            callback: on_add_chapter,
-            icon: IconId::LucidePlus,
-            title: "Create Chapter".to_string(),
-            size: 1.,
-        },
-    ];
-
-    html! {
-        <>
-            <div id="file-explorer" class="select-none outline-none">
-                <div
-                    class="group/buttoncontainer items-center flex relative transition text-ellipsis whitespace-nowrap overflow-hidden cursor-default text-xl"
-                >
-                    <div ref={rename_input_ref.clone()} class="pl-2 mb-1">
-                        { (*name_display).clone() }
-                    </div>
-                    <div class="flex items-center ml-auto my-auto">
-                        { button_props
-                        .iter()
-                        .map(|props| {
-                            html! { <>
-                                <Button callback={props.callback.clone()} icon={props.icon} size={props.size} title={props.title.clone()}/>
-                            </>
-                            }
-                        })
-                        .collect::<Html>() }
-                    </div>
-                </div>
-                <div
-                    class="text-lg border-l-2 border-r-0 border-y-0 border-solid border-text pl-2 ml-2"
-                >
-                    { for (*chapters).clone() }
-                </div>
-            </div>
-        </>
-    }
-}
-
-#[derive(Properties, PartialEq)]
-struct ChapterProps {
-    pub chapter: Chapter,
-    pub index: usize,
-    pub input_ref: NodeRef,
-    pub active: bool,
-}
-
-#[function_component(ChapterComponent)]
-fn chapter(
-    ChapterProps {
-        chapter,
-        index,
-        input_ref,
-        active,
-    }: &ChapterProps,
-) -> Html {
-    let (state, dispatch) = use_store::<State>();
-    let note_elements: Vec<Html> = chapter
-        .notes
-        .iter()
-        .map(|note| {
-            html! { <Entry key={note.clone()} name={note.clone()} chapter_index={index} /> }
-        })
-        .collect();
     let on_extras = {
-        let index = *index;
         let state = state.clone();
         Callback::from(move |_| {
             let state = state.clone();
             spawn_local(async move {
                 let project_clone = state.project.as_ref().unwrap().clone();
                 let mut extras_path = project_clone.path.clone();
-                extras_path.push("Chapters");
-                extras_path.push(project_clone.chapters[index].name.clone());
                 extras_path.push("Extras");
                 invoke(
                     "open_explorer",
@@ -253,155 +228,466 @@ fn chapter(
         })
     };
 
-    let mut content_path = (state.project).as_ref().unwrap().path.clone();
-    content_path.push("Chapters");
-    content_path.push(chapter.name.clone());
-    content_path.push("Content");
-    content_path.set_extension("md");
-    let on_load = {
-        let input_ref = input_ref.clone();
-        let chapter = chapter.clone();
+    let on_close = {
+        let modal = modal.clone();
+        Callback::from(move |_| modal.set(html!()))
+    };
+    let rename_callback = {
+        let title = title.clone();
+        let modal = modal.clone();
+        Callback::from(move |e: MouseEvent| {
+            e.stop_propagation();
+            let title = title.clone();
+            let on_close = on_close.clone();
+            modal.set(html! {
+                <RenamingModal
+                    old_name={(*title).clone()}
+                    closing_callback={on_close}
+                    is_project=true
+                />
+            });
+        })
+    };
 
-        Callback::from(move |_| {
-            let dispatch = dispatch.clone();
-            let state = state.clone();
-            let content_path = content_path.clone();
-            let input_ref = input_ref.clone();
-
-            let index = state
-                .project
-                .clone()
-                .unwrap()
-                .chapters
-                .iter()
-                .position(|r| r.name == chapter.name)
-                .unwrap();
-
-            dispatch.reduce_mut(|x| x.project.as_mut().unwrap().active_chapter = Some(index));
-
-            spawn_local(async move {
-                let content_path = content_path.clone();
-                let content = invoke(
-                    "get_file_content",
-                    to_value(&PathArgs {
-                        path: content_path.to_str().unwrap().to_string(),
-                    })
-                    .unwrap(),
-                )
-                .await
-                .as_string()
-                .unwrap();
-
-                if let Some(input_element) = input_ref.cast::<HtmlElement>() {
-                    input_element.set_inner_text(content.as_str());
-                    let _ = input_element.dispatch_event(&InputEvent::new("input").unwrap());
+    let note_input_handler = {
+        let note_tab = note_tab.clone();
+        let note_types = note_types.clone();
+        Callback::from(move |e: InputEvent| {
+            if let Some(input) = e.target_dyn_into::<HtmlTextAreaElement>() {
+                let text = input.value();
+                let mut note_path = state.project.as_ref().unwrap().path.clone();
+                if *note_tab != note_types[0] {
+                    note_path.push("Chapters");
+                    let project_ref = state.project.as_ref().unwrap();
+                    note_path
+                        .push(project_ref.chapters[project_ref.active_chapter.unwrap()].clone());
                 }
+                note_path.push("Note");
+                note_path.set_extension("md");
+                spawn_local(async move {
+                    let write_data = FileWriteData {
+                        path: note_path.to_str().unwrap().to_string(),
+                        content: text,
+                    };
+
+                    invoke(
+                        "write_to_file",
+                        serde_wasm_bindgen::to_value(&write_data).unwrap(),
+                    )
+                    .await;
+                });
+            }
+        })
+    };
+
+    html! {
+        <>
+            <div
+                id="file-explorer"
+                class="select-none cursor-default transition h-full overflow-auto flex flex-col px-2 min-w-[18rem]"
+            >
+                <button
+                    class="items-center overflow-hidden text-2xl text-subtext hover:text-text my-2 shrink-0 cursor-pointer border-0 rounded-full bg-crust text-start"
+                    onclick={rename_callback}
+                >
+                    { (*title).clone() }
+                </button>
+                <div class="w-full flex my-2 text-center">
+                    // <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
+                    //     { "Settings" }
+                    // </div>
+                    // <div class="rounded-full bg-base py-2 px-4 mr-2 cursor-pointer grow">
+                    //     { "Statistics" }
+                    // </div>
+                    // Space for future buttons
+                    <button
+                        class="rounded-full bg-base py-2 px-4 cursor-pointer grow border-0 text-inherit text-[length:inherit] hover:bg-mantle"
+                        onclick={on_extras}
+                    >
+                        { "Extras" }
+                    </button>
+                </div>
+                <TabMenu tabs={tabs} active_tab={tab.clone()} />
+                if *tab == "Overview" {
+                    <div class="overflow-scroll grow shrink p-2">
+                        <div class="relative">
+                            <DragHandler index=0 />
+                        </div>
+                        { for (*chapters).clone() }
+                        <button
+                            class="w-full hover:bg-mantle bg-crust rounded-lg flex justify-center items-center cursor-pointer border-0 text-inherit text-[length:inherit] "
+                            onclick={on_add_chapter}
+                        >
+                            <div class="h-16 flex items-center align-center">
+                                <Icon
+                                    icon_id={IconId::LucidePlus}
+                                    width="2em"
+                                    height="2em"
+                                    title="Add Chapter"
+                                />
+                            </div>
+                        </button>
+                    </div>
+                } else {
+                    <TabMenu tabs={note_types} active_tab={note_tab.clone()} />
+                    <textarea
+                        class="h-full overflow-scroll grow shrink bg-base resize-none border-0 focus:ring-0 text-text rounded-lg"
+                        oninput={note_input_handler}
+                        ref={note_ref}
+                    />
+                }
+            </div>
+        </>
+    }
+}
+
+#[derive(Properties, PartialEq)]
+struct TabMenuProps {
+    pub tabs: Vec<String>,
+    pub active_tab: UseStateHandle<String>,
+}
+
+#[function_component(TabMenu)]
+fn tabmenu(TabMenuProps { tabs, active_tab }: &TabMenuProps) -> Html {
+    let standard_classes = vec![
+        "py-2",
+        "px-4",
+        "cursor-pointer",
+        "flex",
+        "flex-1",
+        "justify-center",
+        "border-0",
+        "text-inherit",
+        "text-[length:inherit]",
+    ];
+
+    let tabs = tabs
+        .iter()
+        .enumerate()
+        .map(|(index, tab)| {
+            html! {
+                <button
+                    class={classes!(standard_classes.clone(),
+                        if **active_tab == *tab { "bg-primary text-mantle" } else { "bg-base hover:bg-mantle" },
+                        if tabs.len() == 1 { "rounded-full"} else {""},
+                        if index == 0 { "rounded-l-full" } else {""},
+                        if index == tabs.len()-1 { "rounded-r-full" } else {""},
+                    )}
+                    onclick={Callback::from({
+                          let active_tab = active_tab.clone();
+                          let tab_clone = tab.clone();
+                          move |_| active_tab.set(tab_clone.clone())
+                    })}
+                >
+                    { tab }
+                </button>
+            }
+        })
+        .collect::<Vec<VNode>>();
+
+    html! { <div class="w-full flex my-2 justify-around gap-1">{ for tabs }</div> }
+}
+
+#[derive(Properties, PartialEq)]
+struct ChapterProps {
+    pub chapter: String,
+    pub index: usize,
+    pub status: ChapterStatus,
+    pub modal: UseStateHandle<VNode>,
+}
+
+#[function_component(ChapterComponent)]
+fn chapter(
+    ChapterProps {
+        chapter,
+        index,
+        status,
+        modal,
+    }: &ChapterProps,
+) -> Html {
+    let (state, dispatch) = use_store::<State>();
+
+    let on_close = {
+        let modal = modal.clone();
+        Callback::from(move |_| modal.set(html!()))
+    };
+    let rename_callback = {
+        let chapter = chapter.clone();
+        let modal = modal.clone();
+        let on_close = on_close.clone();
+        Callback::from(move |e: MouseEvent| {
+            e.stop_propagation();
+            let chapter = chapter.clone();
+            let on_close = on_close.clone();
+            modal.set(html! {
+                <RenamingModal old_name={chapter} closing_callback={on_close} is_project=false />
+            });
+        })
+    };
+    let delete_callback = {
+        let modal = modal.clone();
+        let chapter = chapter.clone();
+        let dispatch = dispatch.clone();
+        let state = state.clone();
+        let on_close = on_close.clone();
+        let on_delete = {
+            let on_close = on_close.clone();
+            let chapter = chapter.clone();
+            Callback::from(move |_: MouseEvent| {
+                let state = state.clone();
+                let chapter = chapter.clone();
+                let dispatch = dispatch.clone();
+                spawn_local(async move {
+                    let mut complete_path = PathBuf::from(&state.project.as_ref().unwrap().path);
+                    complete_path.push("Chapters");
+                    complete_path.push(&chapter);
+                    let args = PathArgs {
+                        path: complete_path.to_str().unwrap().to_string(),
+                    };
+                    let args = to_value(&args).unwrap();
+                    invoke("delete_path", args).await;
+
+                    if let Some(mut temp_project) = state.project.clone() {
+                        temp_project.chapters.retain(|x| **x != chapter);
+                        dispatch.reduce_mut(|x| x.project = Some(temp_project));
+                    }
+                });
+                on_close.emit(MouseEvent::new("Dummy").unwrap());
+            })
+        };
+        Callback::from(move |e: MouseEvent| {
+            e.stop_propagation();
+            let on_close = on_close.clone();
+            let on_delete = on_delete.clone();
+            let content = html! {
+                <>
+                    <div class="text-xl font-bold">
+                        { format!("Do you really want to delete \"{}\"?", chapter) }
+                    </div>
+                    <br />
+                    <div id="footer" class="flex justify-end w-full pt-8">
+                        <button
+                            onclick={on_delete}
+                            class="rounded-lg text-lg px-2 py-1 ml-4 bg-primary text-crust hover:scale-105 border-0"
+                        >
+                            { "Confirm" }
+                        </button>
+                        <button
+                            onclick={on_close}
+                            class="rounded-lg text-lg px-2 py-1 ml-4 bg-secondary text-crust hover:scale-105 border-0"
+                        >
+                            { "Cancel" }
+                        </button>
+                    </div>
+                </>
+            };
+            modal.set(html! { <Modal content={content} /> });
+        })
+    };
+
+    let on_load = {
+        let index = *index;
+
+        let dispatch = dispatch.clone();
+        Callback::from(move |_: MouseEvent| {
+            let dispatch = dispatch.clone();
+            dispatch.reduce_mut(|x| {
+                x.project.as_mut().unwrap().active_chapter = Some(index);
+                x.changes = false;
+            });
+        })
+    };
+    let on_load_and_close = {
+        let on_load = on_load.clone();
+        let on_close = on_close.clone();
+
+        Callback::from(move |_: MouseEvent| {
+            on_load.emit(MouseEvent::new("Dummy").unwrap());
+            on_close.emit(MouseEvent::new("Dummy").unwrap());
+        })
+    };
+    let on_load_wrapper = {
+        let load_modal = html! {
+            <>
+                <div class="text-xl font-bold">
+                    { format!("You have unsaved changes! do you really want to continue?") }
+                </div>
+                <br />
+                <div id="footer" class="flex justify-end w-full pt-8">
+                    <button
+                        onclick={on_load_and_close.clone()}
+                        class="rounded-lg text-lg px-2 py-1 ml-4 bg-primary text-crust hover:scale-105 border-0"
+                    >
+                        { "Continue" }
+                    </button>
+                    <button
+                        onclick={on_close.clone()}
+                        class="rounded-lg text-lg px-2 py-1 ml-4 bg-secondary text-crust hover:scale-105 border-0"
+                    >
+                        { "Cancel" }
+                    </button>
+                </div>
+            </>
+        };
+        let modal = modal.clone();
+        let state = state.clone();
+        Callback::from(move |_: MouseEvent| {
+            let load_modal = load_modal.clone();
+            let state = state.clone();
+            let modal = modal.clone();
+            let on_load = on_load.clone();
+            if state.changes {
+                modal.set(html! { <Modal content={load_modal} /> });
+            } else {
+                on_load.emit(MouseEvent::new("Dummy").unwrap());
+            }
+        })
+    };
+
+    let button_props = vec![
+        ButtonProps {
+            callback: rename_callback,
+            icon: IconId::LucideEdit3,
+            title: "Rename".to_string(),
+            size: 1.3,
+        },
+        ButtonProps {
+            callback: delete_callback,
+            icon: IconId::LucideTrash2,
+            title: "Delete".to_string(),
+            size: 1.3,
+        },
+    ];
+
+    let ondragstart = {
+        let index = *index;
+        let state = state.clone();
+        let dispatch = dispatch.clone();
+        Callback::from(move |e: DragEvent| {
+            let data_transfer = e.data_transfer().unwrap();
+            data_transfer.set_drag_image(&e.target_dyn_into::<Element>().unwrap(), 0, 0);
+            let _ = data_transfer.set_data("text", &index.to_string());
+
+            gloo_console::log!(format!("Drag Start: {:?}", state.dragger));
+            dispatch.reduce_mut(|x| x.dragger = Some(index));
+        })
+    };
+
+    let ondragend = {
+        Callback::from(move |_e: DragEvent| {
+            gloo_console::log!(format!("Drag End: {:?}", state.dragger));
+            dispatch.reduce_mut(|x| x.dragger = None);
+        })
+    };
+
+    html! {
+        <button
+            class={classes!("hover:bg-mantle", "flex", "flex-row","items-center", "rounded-lg", "cursor-pointer", "group/buttoncontainer","p-0", "pr-3", "w-full", "border-0", "text-inherit", "text-[length:inherit]",
+                if *status==ChapterStatus::Active || *status==ChapterStatus::ActiveChanges {"bg-base"} else {"bg-crust"},
+                if *status==ChapterStatus::ActiveChanges {"italic"} else {""}
+            )}
+            draggable="true"
+            onclick={on_load_wrapper}
+            ondragstart={ondragstart}
+            ondragend={ondragend}
+        >
+            <div
+                class={classes!("p-2", "w-8", "h-8", "rounded-lg", "text-mantle", "m-2", "justify-center", "items-center", "flex", "text-2xl",
+                    if *status==ChapterStatus::Active || *status==ChapterStatus::ActiveChanges {"bg-secondary"} else {"bg-primary"})}
+            >
+                { *index+1 }
+            </div>
+            <div class={classes!("flex", "items-center")}>{ chapter.clone() }</div>
+            <ButtonContainer button_props={button_props} />
+        </button>
+    }
+}
+
+#[derive(Properties, PartialEq)]
+struct DragHandlerProps {
+    // The index of where the chapter will be moved when the handler triggers
+    pub index: usize,
+}
+
+#[function_component(DragHandler)]
+fn draghandler(DragHandlerProps { index }: &DragHandlerProps) -> Html {
+    let (state, dispatch) = use_store::<State>();
+    let active = use_state(|| false);
+
+    // Only show if dragged chapter is inside the handler
+    let ondragover = {
+        let active = active.clone();
+        Callback::from(move |e: DragEvent| {
+            e.prevent_default();
+            active.set(true);
+        })
+    };
+    let ondragout = {
+        let active = active.clone();
+        Callback::from(move |e: DragEvent| {
+            e.prevent_default();
+            active.set(false);
+        })
+    };
+
+    let ondrop = {
+        let index = *index;
+        let active = active.clone();
+        Callback::from(move |e: DragEvent| {
+            e.prevent_default();
+            dispatch.reduce_mut(|x| {
+                // Get references to the state
+                let (Some(project), Some(dragger_index)) = (x.project.as_mut(), x.dragger.as_ref())
+                else {
+                    return;
+                };
+                let Some(dragger) = project.chapters.get(*dragger_index).cloned() else {
+                    return;
+                };
+
+                // Adjust index if it would be moved my removing an the chapter
+                let adjusted_index = if *dragger_index < index {
+                    index - 1
+                } else {
+                    index
+                };
+
+                // Move the chapter
+                project.chapters.remove(*dragger_index);
+                project.chapters.insert(adjusted_index, dragger);
+
+                // Adjust active chapter if it's been moved
+                let Some(active_chapter) = project.active_chapter else {
+                    return;
+                };
+                if active_chapter == adjusted_index {
+                    project.active_chapter = Some(*dragger_index);
+                }
+                if active_chapter == *dragger_index {
+                    project.active_chapter = Some(adjusted_index);
+                }
+
+                // Clean up drag handling
+                x.dragger = None;
+                active.set(false);
             });
         })
     };
 
     html! {
-        <Dropdown
-            title={chapter.name.clone()}
-            open=false
-            dropdown_type={Type::Chapter}
-            accent={active}
-        >
-            <Title onclick={on_load}>
-                <div class="pl-5">{ "Contents" }</div>
-            </Title>
-            //<Dropdown title="Notes" open=false dropdown_type={Type::Notes} chapter_index={index}>
-            //    { for note_elements }
-            //</Dropdown>
-            <Title onclick={on_extras}>
-                <div class="pl-5">{ "Extras" }</div>
-            </Title>
-        </Dropdown>
+        if state.dragger.is_some() {
+            <div
+                class="absolute -bottom-4 h-6 w-full z-30"
+                ondragover={ondragover}
+                ondragleave={ondragout}
+                ondrop={ondrop}
+            >
+                if *active {
+                    <div
+                        class="absolute top-1/2 transform -translate-y-1/2 w-full border-b-2 border-solid border-primary pointer-events-none"
+                    />
+                }
+            </div>
+        }
     }
 }
-
-#[derive(Properties, PartialEq, Eq)]
-pub struct EntryProps {
-    pub name: String,
-    pub chapter_index: usize,
-}
-
-#[function_component(Entry)]
-fn entry(
-    EntryProps {
-        name,
-        chapter_index,
-    }: &EntryProps,
-) -> Html {
-    let (state, dispatch) = use_store::<State>();
-    let input_ref = use_node_ref();
-    let title = use_state(|| name.clone());
-    let name_display = use_state(|| html! { name.clone() });
-
-    let button_props = vec![
-        ButtonProps {
-            callback: get_rename_callback(
-                name_display.clone(),
-                title,
-                input_ref,
-                state.clone(),
-                dispatch.clone(),
-                RenameKind::Note,
-                Some(*chapter_index),
-            ),
-            icon: IconId::LucideEdit3,
-            title: "Rename Note".to_string(),
-            size: 1.,
-        },
-        ButtonProps {
-            callback: get_delete_callback(
-                state,
-                dispatch,
-                name.clone(),
-                Some(*chapter_index),
-                RenameKind::Note,
-            ),
-            icon: IconId::LucideTrash2,
-            title: "Delete Note".to_string(),
-            size: 1.,
-        },
-    ];
-    html! {
-        <Title button_props={button_props}>
-            <div class="pl-2">{ (*name_display).clone() }</div>
-        </Title>
-    }
-}
-
-#[derive(Properties, PartialEq)]
-pub struct TitleProps {
-    pub children: Html,
-    #[prop_or_default]
-    pub button_props: Vec<ButtonProps>,
-    #[prop_or_default]
-    pub onclick: Callback<MouseEvent>,
-}
-
-#[function_component(Title)]
-fn title(
-    TitleProps {
-        children,
-        button_props,
-        onclick,
-    }: &TitleProps,
-) -> Html {
-    html! {
-        <div
-            class="group/buttoncontainer items-center flex relative transition rounded-md my-[1px] hover:bg-secondary hover:text-mantle cursor-pointer"
-            onclick={onclick}
-        >
-            { children.clone() }
-            <ButtonContainer button_props={(*button_props).clone()} />
-        </div>
-    }
-}
-//rounded-md hover:bg-green pl-2 hover:text-mantle">
-//text-text text-ellipsis whitespace-nowrap overflow-hidden cursor-default text-xl"
-//rounded-md my-[1px] pl-5 hover:bg-sapphire hover:text-mantle"
-//rounded-md my-[1px] content-center transition text-subtext1 hover:bg-mauve hover:text-mantle"
-//rounded-md my-[1px] pl-5 hover:bg-sapphire hover:text-mantle"

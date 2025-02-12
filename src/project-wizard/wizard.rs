@@ -221,7 +221,7 @@ pub fn project_wizard(
                 <input
                     oninput={on_title_input}
                     ref={title_ref}
-                    class="outline-none w-full bg-crust text-text p-2 rounded-lg border-0 font-standard text-base"
+                    class="w-full bg-crust text-text p-2 rounded-lg border-0 font-standard text-base"
                 />
             </div>
             <br />
@@ -232,16 +232,16 @@ pub fn project_wizard(
                 <input
                     oninput={on_location_input}
                     ref={location_ref}
-                    class="outline-none w-full bg-crust text-text p-2 rounded-tl-lg rounded-bl-lg border-0 font-standard text-base"
+                    class="w-full bg-crust text-text p-2 rounded-tl-lg rounded-bl-lg border-0 font-standard text-base"
                 />
-                <div
+                <button
                     onmouseover={on_mouse_over}
                     onmouseout={on_mouse_out}
                     onclick={on_choose_folder}
-                    class="content-center hover:text-primary  bg-crust rounded-tr-lg border-l-2 border-mantle border-solid border-r-0 border-y-0 rounded-br-lg p-2 items-center flex"
+                    class="content-center hover:text-primary  bg-crust rounded-tr-lg border-l-2 border-mantle border-solid border-r-0 border-y-0 rounded-br-lg p-2 items-center flex border-solid text-inherit text-[length:inherit]"
                 >
                     { icon }
-                </div>
+                </button>
             </div>
             <div id="footer" class="flex justify-end w-full pt-8">
                 <div class="text-text underline decoration-primary break-words mr-auto">

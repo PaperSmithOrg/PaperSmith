@@ -26,8 +26,8 @@ pub fn button(
     }: &Props,
 ) -> Html {
     html! {
-        <div
-            class="group/button flex bg-base text-text mx-1 my-auto rounded-md p-[2px] cursor-pointer items-center content-center"
+        <button
+            class="group/button flex bg-base text-text m-1 my-auto rounded-md p-[2px] cursor-pointer items-center content-center border-0 text-[length:inherit]"
             onclick={callback}
         >
             <Icon
@@ -37,13 +37,15 @@ pub fn button(
                 title={title.clone()}
                 class="group-hover/button:scale-90"
             />
-        </div>
+        </button>
     }
 }
 #[function_component(ButtonContainer)]
 pub fn button_container(ContainerProps { button_props }: &ContainerProps) -> Html {
     html!(
-        <div class="hidden group-hover/buttoncontainer:flex items-center ml-auto my-auto">
+        <div
+            class="hidden group-hover/buttoncontainer:flex group-focus-within/buttoncontainer:flex flex-col items-center ml-auto my-auto"
+        >
             { button_props
             .iter()
             .map(|props| {

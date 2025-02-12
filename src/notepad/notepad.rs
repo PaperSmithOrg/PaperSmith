@@ -2,10 +2,13 @@ use pulldown_cmark::{html::push_html, Options, Parser};
 use regex::Regex;
 use web_sys::HtmlElement;
 use yew::prelude::*;
+use yewdux::prelude::*;
 
 #[path = "zoom_handlers.rs"]
 mod zoom_edit_container_handlers;
 use zoom_edit_container_handlers::ZoomControls;
+
+use crate::app::State;
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
@@ -20,18 +23,31 @@ pub fn notepads(
         text_input_ref,
     }: &Props,
 ) -> Html {
+    let (_state, dispatch) = use_store::<State>();
     let zoom_compile_ref = use_node_ref();
     let zoom_edit_ref = use_node_ref();
     let font_size_edit = use_state(|| 16.0);
     let font_size_compile = use_state(|| 16.0);
     let render_ref = use_node_ref();
-    let on_text_input = text_input_handler(text_input_ref.clone(), render_ref.clone());
+    let on_text_input = {
+        let render_ref = render_ref.clone();
+        let text_input_ref = text_input_ref.clone();
+        Callback::from(move |e: InputEvent| {
+            if let Some(input) = text_input_ref.cast::<HtmlElement>() {
+                let inner_text = input.inner_text();
+                // gloo_console::log!(format!("Printing text: {}", &inner_text));
+                let new_lines: Vec<String> = inner_text.lines().map(String::from).collect();
+                if e.data().is_some() {
+                    dispatch.reduce_mut(|x| x.changes = true);
+                }
+                //lines.set(new_lines);
+                rendering_handler(&render_ref, &new_lines);
+            }
+        })
+    };
 
     html!(
-        <div
-            class="flex flex-grow h-notepad bg-crust justify-evenly gap-5 px-3"
-            ref={pages_ref.clone()}
-        >
+        <div class="flex flex-grow  bg-crust justify-evenly gap-5 px-3" ref={pages_ref.clone()}>
             <div
                 class="bg-base max-h-full flex flex-1 flex-col overflow-hidden mx-2 rounded-md max-w-[45vw]"
             >
@@ -47,6 +63,7 @@ pub fn notepads(
                     style={format!("font-size: {}px;", *font_size_edit)}
                     contenteditable="true"
                     oninput={on_text_input}
+                    tabindex="0"
                 />
             </div>
             <div
@@ -70,17 +87,6 @@ pub fn notepads(
         </div>
     )
 }
-fn text_input_handler(text_input_ref: NodeRef, render_ref: NodeRef) -> Callback<InputEvent> {
-    Callback::from(move |_| {
-        if let Some(input) = text_input_ref.cast::<HtmlElement>() {
-            let inner_text = input.inner_text();
-            gloo_console::log!(&inner_text);
-            let new_lines: Vec<String> = inner_text.lines().map(String::from).collect();
-            //lines.set(new_lines);
-            rendering_handler(&render_ref, &new_lines);
-        }
-    })
-}
 
 // ad br tag after end of each line (make it one string)
 fn rendering_handler(render_ref: &NodeRef, new_lines: &[String]) {
@@ -93,7 +99,7 @@ fn rendering_handler(render_ref: &NodeRef, new_lines: &[String]) {
     let html_strings: Vec<String> = new_lines
         .iter()
         .map(|line| {
-            gloo_console::log!(line);
+            // gloo_console::log!(line);
             let mut options = Options::empty();
             options.insert(Options::ENABLE_STRIKETHROUGH);
             options.insert(Options::ENABLE_TABLES);

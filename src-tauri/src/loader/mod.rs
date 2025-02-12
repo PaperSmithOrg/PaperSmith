@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use log::{info, warn};
 use serde_json::Error;
-use shared::{Chapter, Project};
+use shared::Project;
 
 pub fn parse_project(path: PathBuf) -> Option<Project> {
     let mut file_path = path.clone();
@@ -35,7 +35,7 @@ pub fn parse_project(path: PathBuf) -> Option<Project> {
     if !chapters_path.exists() {
         fs::create_dir_all(&chapters_path).unwrap();
     }
-    let mut chapters: Vec<Chapter> = vec![];
+    let mut chapters: Vec<String> = vec![];
 
     for chapter in chapters_path
         .read_dir()
@@ -50,53 +50,7 @@ pub fn parse_project(path: PathBuf) -> Option<Project> {
             .to_string_lossy()
             .into_owned();
 
-        let mut notes_path = chapter_path.clone();
-        notes_path.push("Notes");
-        if !notes_path.exists() {
-            fs::create_dir_all(&notes_path).unwrap();
-        }
-        let mut notes: Vec<String> = vec![];
-
-        for note in notes_path
-            .read_dir()
-            .unwrap()
-            .filter(|x| x.as_ref().unwrap().file_type().unwrap().is_file())
-        {
-            let note = note.unwrap().path();
-            if let Some(extension) = note.extension() {
-                if extension == "md" {
-                    notes.push(note.file_stem().unwrap().to_string_lossy().into_owned());
-                }
-            }
-        }
-
-        let mut extras_path = chapter_path.clone();
-        extras_path.push("Extras");
-        if !extras_path.exists() {
-            fs::create_dir_all(&extras_path).unwrap();
-        }
-        let mut extras: Vec<String> = vec![];
-
-        for extra_file in extras_path
-            .read_dir()
-            .unwrap()
-            .filter(|x| x.as_ref().unwrap().file_type().unwrap().is_file())
-        {
-            let extra_file = extra_file.unwrap().path();
-            extras.push(
-                extra_file
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned(),
-            );
-        }
-
-        chapters.push(Chapter {
-            name: chapter_title,
-            notes,
-            extras,
-        });
+        chapters.push(chapter_title);
     }
 
     Some(Project {
