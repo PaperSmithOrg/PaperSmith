@@ -110,7 +110,7 @@ pub fn text_styling_controls() -> Html {
             icon: IconId::LucideItalic,
             title: "Italic".to_string(),
             range: range_state.clone(),
-            style: "_".to_string(),
+            style: "*".to_string(),
         },
         StyleButtonProps {
             icon: IconId::LucideUnderline,
