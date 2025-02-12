@@ -5,9 +5,9 @@ use serde::Serialize;
 use serde_json::json;
 use serde_wasm_bindgen::from_value;
 use wasm_bindgen::JsValue;
-use yew::platform::spawn_local;
 use web_sys::HtmlElement;
 use web_sys::HtmlSelectElement;
+use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
 
@@ -128,7 +128,7 @@ pub fn Statistics(StatisticsProps { pages_ref }: &StatisticsProps) -> Html {
                                 let mut path_string =
                                     path_jsvalue.as_string().expect("Geming").clone();
 
-                                path_string.push_str("/PaperSmith/");
+                                path_string.push_str("/PaperSmith/Statistics");
 
                                 let json_write = FileWriteData {
                                     path: path_string,
@@ -218,7 +218,7 @@ pub fn StatisticWindow(
                                 .unwrap()
                                 .unwrap();
 
-                                base_path.push_str("/PaperSmith/");
+                                base_path.push_str("/PaperSmith/Statistics");
                                 base_path.push_str(&file_name);
 
                                 //gloo_console::log!(format!("{}",path));

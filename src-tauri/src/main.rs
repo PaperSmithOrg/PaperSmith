@@ -6,6 +6,7 @@ use loader::write_project_config;
 use log::info;
 use log::warn;
 use rfd::FileDialog;
+use saving::create_directory;
 use saving::create_empty_file;
 use std::fs;
 use std::fs::File;
@@ -51,7 +52,8 @@ fn main() {
             list_statistic_files,
             unformat_file_name,
             read_json_file,
-            write_project_config
+            write_project_config,
+            create_directory,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -91,7 +93,7 @@ fn open_explorer(path: String) {
 #[tauri::command]
 fn list_statistic_files() -> Result<Vec<String>, String> {
     let mut path = get_data_dir();
-    path.push_str("/PaperSmith/");
+    path.push_str("/PaperSmith/Statistics");
 
     let pattern = format!("{path}/**/*");
     let mut files = Vec::new();

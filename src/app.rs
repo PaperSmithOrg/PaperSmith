@@ -1,6 +1,7 @@
 use gloo::utils::document;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
+use serde_wasm_bindgen::to_value;
 use shared::Project;
 use sidebar::buttons::Button;
 use statistic::StatisticWindow;
@@ -409,6 +410,53 @@ fn apply_settings() {
         let mut path = path_jsvalue.as_string().expect("Cast failed").clone();
 
         path.push_str("/PaperSmith");
+
+        if invoke(
+            "can_create_path",
+            to_value(&PathArgs {
+                path: path.to_string().clone(),
+            })
+            .unwrap(),
+        )
+        .await
+        .as_string()
+        .unwrap()
+        .is_empty()
+        {
+            invoke(
+                "create_directory",
+                to_value(&PathArgs {
+                    path: path.to_string().clone(),
+                })
+                .unwrap(),
+            )
+            .await;
+        }
+
+        let mut statistics_path = path.clone();
+        statistics_path.push_str("/Statistics");
+
+        if invoke(
+            "can_create_path",
+            to_value(&PathArgs {
+                path: statistics_path.to_string().clone(),
+            })
+            .unwrap(),
+        )
+        .await
+        .as_string()
+        .unwrap()
+        .is_empty()
+        {
+            invoke(
+                "create_directory",
+                to_value(&PathArgs {
+                    path: statistics_path.to_string().clone(),
+                })
+                .unwrap(),
+            )
+            .await;
+        }
 
         let settings_jsvalue = invoke(
             "get_settings",

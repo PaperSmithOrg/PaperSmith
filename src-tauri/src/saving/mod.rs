@@ -68,6 +68,17 @@ pub fn create_empty_file(path: String) {
 }
 
 #[tauri::command]
+pub fn create_directory(path: String) {
+    let path = PathBuf::from(path);
+    println!("Creating Directory: {}", path.to_str().unwrap());
+    //if !can_create_path(path).is_empty(){
+    //    println!("Path did not exist");
+    //    return;
+    //}
+    let _ = fs::create_dir(path);
+}
+
+#[tauri::command]
 pub fn delete_path(path: String) {
     let path = PathBuf::from(path);
     println!("Deleting: {}", path.to_str().unwrap());
