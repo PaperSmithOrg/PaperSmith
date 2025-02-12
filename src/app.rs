@@ -8,10 +8,10 @@ use statistic::StatisticWindow;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
-use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlDocument;
 use web_sys::HtmlElement;
 use yew::events::MouseEvent;
+use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_hooks::use_interval;
 use yew_icons::IconId;
@@ -427,6 +427,53 @@ fn apply_settings() {
         let mut path = path_jsvalue.as_string().expect("Cast failed").clone();
 
         path.push_str("/PaperSmith");
+
+        if invoke(
+            "can_create_path",
+            to_value(&PathArgs {
+                path: path.to_string().clone(),
+            })
+            .unwrap(),
+        )
+        .await
+        .as_string()
+        .unwrap()
+        .is_empty()
+        {
+            invoke(
+                "create_directory",
+                to_value(&PathArgs {
+                    path: path.to_string().clone(),
+                })
+                .unwrap(),
+            )
+            .await;
+        }
+
+        let mut statistics_path = path.clone();
+        statistics_path.push_str("/Statistics");
+
+        if invoke(
+            "can_create_path",
+            to_value(&PathArgs {
+                path: statistics_path.to_string().clone(),
+            })
+            .unwrap(),
+        )
+        .await
+        .as_string()
+        .unwrap()
+        .is_empty()
+        {
+            invoke(
+                "create_directory",
+                to_value(&PathArgs {
+                    path: statistics_path.to_string().clone(),
+                })
+                .unwrap(),
+            )
+            .await;
+        }
 
         let settings_jsvalue = invoke(
             "get_settings",

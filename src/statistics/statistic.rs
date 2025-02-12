@@ -1,15 +1,13 @@
 use chrono::prelude::*;
 use gloo_timers::callback::Timeout;
-use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
 use serde_wasm_bindgen::from_value;
-use std::sync::Mutex;
 use wasm_bindgen::JsValue;
-use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlElement;
 use web_sys::HtmlSelectElement;
+use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
 
@@ -35,10 +33,6 @@ pub struct StatisticsWindowProps {
 //     pub char_count: usize,
 //     pub pages_ref: NodeRef,
 // }
-
-lazy_static! {
-    static ref START_TIME: Mutex<DateTime<Utc>> = Mutex::new(Utc::now());
-}
 
 #[derive(Serialize)]
 pub struct PathArgs {
@@ -126,7 +120,6 @@ pub fn Statistics(StatisticsProps { pages_ref }: &StatisticsProps) -> Html {
                                 })
                                 .to_string();
 
-                                let start_time = *START_TIME.lock().unwrap();
                                 let formatted_time =
                                     start_time.format("%Y-%m-%dT%H-%M-%S").to_string();
 
@@ -135,7 +128,7 @@ pub fn Statistics(StatisticsProps { pages_ref }: &StatisticsProps) -> Html {
                                 let mut path_string =
                                     path_jsvalue.as_string().expect("Geming").clone();
 
-                                path_string.push_str("/PaperSmith/");
+                                path_string.push_str("/PaperSmith/Statistics");
 
                                 let json_write = FileWriteData {
                                     path: path_string,
@@ -225,7 +218,7 @@ pub fn StatisticWindow(
                                 .unwrap()
                                 .unwrap();
 
-                                base_path.push_str("/PaperSmith/");
+                                base_path.push_str("/PaperSmith/Statistics");
                                 base_path.push_str(&file_name);
 
                                 //gloo_console::log!(format!("{}",path));

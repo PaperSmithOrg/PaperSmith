@@ -2,8 +2,8 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use serde_wasm_bindgen::to_value;
-use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlTextAreaElement;
+use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
 use yew_icons::Icon;
