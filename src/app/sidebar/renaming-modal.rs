@@ -7,7 +7,7 @@ use web_sys::{HtmlButtonElement, HtmlInputElement};
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-use crate::app::{invoke, modal::Modal, PathArgs, State};
+use crate::app::{invoke, modal_system::Modal, PathArgs, State};
 
 #[derive(Serialize)]
 struct RenameArgs {

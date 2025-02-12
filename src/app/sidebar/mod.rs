@@ -16,7 +16,7 @@ mod renaming_modal;
 use renaming_modal::RenamingModal;
 
 use crate::app::invoke;
-use crate::app::modal::Modal;
+use crate::app::modal_system::Modal;
 use crate::app::wizard::PathArgs;
 use crate::app::ButtonContainer;
 use crate::app::ButtonProps;

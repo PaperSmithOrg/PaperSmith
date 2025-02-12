@@ -3,7 +3,7 @@ use yew::prelude::*;
 use yew_hooks::use_interval;
 use yew_icons::IconId;
 
-use crate::app::sidebar::buttons::Button;
+use crate::app::buttons::Button;
 
 fn apply_style(range: &Range, style: &String) {
     let document = window().unwrap().document().unwrap();

@@ -2,7 +2,7 @@ use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew_icons::IconId;
 
-use crate::app::sidebar::buttons::Button;
+use crate::app::buttons::Button;
 
 pub fn zoom_increase_handler(
     font_size: UseStateHandle<f64>,

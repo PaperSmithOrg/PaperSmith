@@ -17,7 +17,6 @@ use yewdux::prelude::*;
 use shared::Project;
 use shared::Settings;
 
-#[path = "notepad/notepad.rs"]
 mod notepad;
 use notepad::Notepads;
 
@@ -25,32 +24,26 @@ use notepad::Notepads;
 //mod text_alignment_handlers;
 //use text_alignment_handlers::TextAlignmentControls;
 
-#[path = "menubar/text/text_styling_handlers.rs"]
-mod text_styling_handlers;
-use text_styling_handlers::TextStylingControls;
+mod styling;
+use styling::TextStylingControls;
 
-#[path = "statistics/statistic.rs"]
 mod statistic;
 use statistic::StatisticWindow;
 use statistic::Statistics;
 
-#[path = "sidebar/sidebar.rs"]
 mod sidebar;
 use sidebar::SideBarWrapper;
 
 mod buttons;
 pub use buttons::{Props as ButtonProps, *};
 
-#[path = "project-wizard/wizard.rs"]
 mod wizard;
 use wizard::ProjectWizard;
 
-#[path = "modal-system/modal.rs"]
-mod modal;
-use modal::Modal;
-use modal::VerticalModal;
+mod modal_system;
+use modal_system::Modal;
+use modal_system::VerticalModal;
 
-#[path = "settings-menu/settings.rs"]
 mod settings;
 use settings::SettingsMenu;
 
