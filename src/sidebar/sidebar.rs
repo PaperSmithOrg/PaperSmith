@@ -605,6 +605,7 @@ fn chapter(
 
 #[derive(Properties, PartialEq)]
 struct DragHandlerProps {
+    // The index of where the chapter will be moved when the handler triggers
     pub index: usize,
 }
 
@@ -613,6 +614,7 @@ fn draghandler(DragHandlerProps { index }: &DragHandlerProps) -> Html {
     let (state, dispatch) = use_store::<State>();
     let active = use_state(|| false);
 
+    // Only show if dragged chapter is inside the handler
     let ondragover = {
         let active = active.clone();
         Callback::from(move |e: DragEvent| {
@@ -634,38 +636,48 @@ fn draghandler(DragHandlerProps { index }: &DragHandlerProps) -> Html {
         Callback::from(move |e: DragEvent| {
             e.prevent_default();
             dispatch.reduce_mut(|x| {
-                let dragger_value =
-                    x.project.as_ref().unwrap().chapters[x.dragger.unwrap()].clone();
-                gloo_console::log!(format!(
-                    "Dragger Value: {} {dragger_value}",
-                    x.dragger.unwrap()
-                ));
-                let adjusted_index = if x.dragger.unwrap() < index {
+                // Get references to the state
+                let (Some(project), Some(dragger_index)) = (x.project.as_mut(), x.dragger.as_ref())
+                else {
+                    return;
+                };
+                let Some(dragger) = project.chapters.get(*dragger_index).cloned() else {
+                    return;
+                };
+
+                // Adjust index if it would be moved my removing an the chapter
+                let adjusted_index = if *dragger_index < index {
                     index - 1
                 } else {
                     index
                 };
-                x.project
-                    .as_mut()
-                    .unwrap()
-                    .chapters
-                    .remove(x.dragger.unwrap());
-                x.project
-                    .as_mut()
-                    .unwrap()
-                    .chapters
-                    .insert(adjusted_index, dragger_value);
+
+                // Move the chapter
+                project.chapters.remove(*dragger_index);
+                project.chapters.insert(adjusted_index, dragger);
+
+                // Adjust active chapter if it's been moved
+                let Some(active_chapter) = project.active_chapter else {
+                    return;
+                };
+                if active_chapter == adjusted_index {
+                    project.active_chapter = Some(*dragger_index);
+                }
+                if active_chapter == *dragger_index {
+                    project.active_chapter = Some(adjusted_index);
+                }
+
+                // Clean up drag handling
                 x.dragger = None;
                 active.set(false);
             });
-            gloo_console::log!(format!("Dropped on: {:?}", index));
         })
     };
 
     html! {
         if state.dragger.is_some() {
             <div
-                class="absolute -bottom-4 h-6 w-full z-30 border-2 border-solid border-text"
+                class="absolute -bottom-4 h-6 w-full z-30"
                 ondragover={ondragover}
                 ondragleave={ondragout}
                 ondrop={ondrop}
