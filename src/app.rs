@@ -2,9 +2,6 @@ use gloo::utils::document;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;
-use shared::Project;
-use sidebar::buttons::Button;
-use statistic::StatisticWindow;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
@@ -17,15 +14,12 @@ use yew_hooks::use_interval;
 use yew_icons::IconId;
 use yewdux::prelude::*;
 
+use shared::Project;
 use shared::Settings;
 
 #[path = "notepad/notepad.rs"]
 mod notepad;
 use notepad::Notepads;
-
-#[path = "toolbar/toolbar.rs"]
-mod toolbar;
-use toolbar::Toolbar;
 
 //#[path = "text_alignment_handlers.rs"]
 //mod text_alignment_handlers;
@@ -37,11 +31,15 @@ use text_styling_handlers::TextStylingControls;
 
 #[path = "statistics/statistic.rs"]
 mod statistic;
+use statistic::StatisticWindow;
 use statistic::Statistics;
 
 #[path = "sidebar/sidebar.rs"]
 mod sidebar;
 use sidebar::SideBarWrapper;
+
+mod buttons;
+pub use buttons::{Props as ButtonProps, *};
 
 #[path = "project-wizard/wizard.rs"]
 mod wizard;
@@ -369,7 +367,6 @@ pub fn app() -> Html {
             <div class="light lightdark medium dark verydark" />
             <div class="modal-wrapper">{ (*modal).clone() }</div>
             <style id="dynamic-style" />
-            <Toolbar />
             <div class="h-8 flex justify-left items-center p-2 bg-crust">
                 <Button
                     callback={open_modal}

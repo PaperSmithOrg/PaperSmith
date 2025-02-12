@@ -11,10 +11,6 @@ use yew_icons::Icon;
 use yew_icons::IconId;
 use yewdux::prelude::*;
 
-#[path = "buttons.rs"]
-pub mod buttons;
-pub use buttons::{ButtonContainer, Props as ButtonProps};
-
 #[path = "renaming-modal.rs"]
 mod renaming_modal;
 use renaming_modal::RenamingModal;
@@ -22,6 +18,8 @@ use renaming_modal::RenamingModal;
 use crate::app::invoke;
 use crate::app::modal::Modal;
 use crate::app::wizard::PathArgs;
+use crate::app::ButtonContainer;
+use crate::app::ButtonProps;
 use crate::app::FileWriteData;
 use crate::app::State;
 
@@ -40,7 +38,6 @@ fn get_file_name(path: &Path) -> String {
         .unwrap_or_else(|| path.to_str().unwrap())
         .to_string()
 }
-
 #[derive(Properties, PartialEq)]
 pub struct Props {
     pub modal: UseStateHandle<VNode>,
