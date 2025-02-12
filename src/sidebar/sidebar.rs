@@ -2,6 +2,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use serde_wasm_bindgen::to_value;
+use web_sys::Element;
 use web_sys::HtmlTextAreaElement;
 use yew::platform::spawn_local;
 use yew::prelude::*;
@@ -125,7 +126,6 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
 
     {
         let chapters = chapters.clone();
-
         let state = state.clone();
         let modal = modal.clone();
         use_effect_with(state.clone(), move |_| {
@@ -146,13 +146,16 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
                             }
                         }
                         html! {
-                            <ChapterComponent
-                                key={chapter.clone()}
-                                chapter={chapter.clone()}
-                                index={index}
-                                status={status}
-                                modal={modal.clone()}
-                            />
+                            <div class="relative">
+                                <ChapterComponent
+                                    key={chapter.clone()}
+                                    chapter={chapter.clone()}
+                                    index={index}
+                                    status={status}
+                                    modal={modal.clone()}
+                                />
+                                <DragHandler index={index+1} />
+                            </div>
                         }
                     })
                     .collect::<Vec<VNode>>();
@@ -307,6 +310,9 @@ pub fn sidebar(Props { modal }: &Props) -> Html {
                 <TabMenu tabs={tabs} active_tab={tab.clone()} />
                 if *tab == "Overview" {
                     <div class="overflow-scroll grow shrink p-2">
+                        <div class="relative">
+                            <DragHandler index=0 />
+                        </div>
                         { for (*chapters).clone() }
                         <button
                             class="w-full hover:bg-mantle bg-crust rounded-lg flex justify-center items-center cursor-pointer border-0 text-inherit text-[length:inherit] "
@@ -482,6 +488,7 @@ fn chapter(
     let on_load = {
         let index = *index;
 
+        let dispatch = dispatch.clone();
         Callback::from(move |_: MouseEvent| {
             let dispatch = dispatch.clone();
             dispatch.reduce_mut(|x| {
@@ -523,6 +530,7 @@ fn chapter(
             </>
         };
         let modal = modal.clone();
+        let state = state.clone();
         Callback::from(move |_: MouseEvent| {
             let load_modal = load_modal.clone();
             let state = state.clone();
@@ -551,13 +559,37 @@ fn chapter(
         },
     ];
 
+    let ondragstart = {
+        let index = *index;
+        let state = state.clone();
+        let dispatch = dispatch.clone();
+        Callback::from(move |e: DragEvent| {
+            let data_transfer = e.data_transfer().unwrap();
+            data_transfer.set_drag_image(&e.target_dyn_into::<Element>().unwrap(), 0, 0);
+            let _ = data_transfer.set_data("text", &index.to_string());
+
+            gloo_console::log!(format!("Drag Start: {:?}", state.dragger));
+            dispatch.reduce_mut(|x| x.dragger = Some(index));
+        })
+    };
+
+    let ondragend = {
+        Callback::from(move |_e: DragEvent| {
+            gloo_console::log!(format!("Drag End: {:?}", state.dragger));
+            dispatch.reduce_mut(|x| x.dragger = None);
+        })
+    };
+
     html! {
         <button
-            class={classes!("hover:bg-mantle", "flex", "flex-row","items-center", "rounded-lg", "cursor-pointer", "group/buttoncontainer", "pr-3", "w-full", "border-0", "text-inherit", "text-[length:inherit]",
+            class={classes!("hover:bg-mantle", "flex", "flex-row","items-center", "rounded-lg", "cursor-pointer", "group/buttoncontainer","p-0", "pr-3", "w-full", "border-0", "text-inherit", "text-[length:inherit]",
                 if *status==ChapterStatus::Active || *status==ChapterStatus::ActiveChanges {"bg-base"} else {"bg-crust"},
                 if *status==ChapterStatus::ActiveChanges {"italic"} else {""}
             )}
+            draggable="true"
             onclick={on_load_wrapper}
+            ondragstart={ondragstart}
+            ondragend={ondragend}
         >
             <div
                 class={classes!("p-2", "w-8", "h-8", "rounded-lg", "text-mantle", "m-2", "justify-center", "items-center", "flex", "text-2xl",
@@ -568,5 +600,82 @@ fn chapter(
             <div class={classes!("flex", "items-center")}>{ chapter.clone() }</div>
             <ButtonContainer button_props={button_props} />
         </button>
+    }
+}
+
+#[derive(Properties, PartialEq)]
+struct DragHandlerProps {
+    pub index: usize,
+}
+
+#[function_component(DragHandler)]
+fn draghandler(DragHandlerProps { index }: &DragHandlerProps) -> Html {
+    let (state, dispatch) = use_store::<State>();
+    let active = use_state(|| false);
+
+    let ondragover = {
+        let active = active.clone();
+        Callback::from(move |e: DragEvent| {
+            e.prevent_default();
+            active.set(true);
+        })
+    };
+    let ondragout = {
+        let active = active.clone();
+        Callback::from(move |e: DragEvent| {
+            e.prevent_default();
+            active.set(false);
+        })
+    };
+
+    let ondrop = {
+        let index = *index;
+        let active = active.clone();
+        Callback::from(move |e: DragEvent| {
+            e.prevent_default();
+            dispatch.reduce_mut(|x| {
+                let dragger_value =
+                    x.project.as_ref().unwrap().chapters[x.dragger.unwrap()].clone();
+                gloo_console::log!(format!(
+                    "Dragger Value: {} {dragger_value}",
+                    x.dragger.unwrap()
+                ));
+                let adjusted_index = if x.dragger.unwrap() < index {
+                    index - 1
+                } else {
+                    index
+                };
+                x.project
+                    .as_mut()
+                    .unwrap()
+                    .chapters
+                    .remove(x.dragger.unwrap());
+                x.project
+                    .as_mut()
+                    .unwrap()
+                    .chapters
+                    .insert(adjusted_index, dragger_value);
+                x.dragger = None;
+                active.set(false);
+            });
+            gloo_console::log!(format!("Dropped on: {:?}", index));
+        })
+    };
+
+    html! {
+        if state.dragger.is_some() {
+            <div
+                class="absolute -bottom-4 h-6 w-full z-30 border-2 border-solid border-text"
+                ondragover={ondragover}
+                ondragleave={ondragout}
+                ondrop={ondrop}
+            >
+                if *active {
+                    <div
+                        class="absolute top-1/2 transform -translate-y-1/2 w-full border-b-2 border-solid border-primary pointer-events-none"
+                    />
+                }
+            </div>
+        }
     }
 }

@@ -83,6 +83,7 @@ pub struct State {
     project: Option<Project>,
     settings: Option<Settings>,
     changes: bool,
+    dragger: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize)]
