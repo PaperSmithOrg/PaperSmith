@@ -20,10 +20,6 @@ use shared::Settings;
 mod notepad;
 use notepad::Notepads;
 
-//#[path = "text_alignment_handlers.rs"]
-//mod text_alignment_handlers;
-//use text_alignment_handlers::TextAlignmentControls;
-
 mod styling;
 use styling::TextStylingControls;
 
@@ -134,7 +130,7 @@ pub fn app() -> Html {
                         )
                         .await;
 
-                        // modal.set(html! {});
+                        // TODO: add save notifier
                     }
                 }
             });
@@ -154,13 +150,8 @@ pub fn app() -> Html {
             move || {
                 save.emit(MouseEvent::new("Dummy").unwrap());
             },
-            // if let Some(settings) = state.settings.as_ref() {
-            //     settings.interval
-            // } else {
-            //     Settings::default().interval
-            // },
             5 * 60 * 1000,
-        ); // 300,000 ms = 5 minutes
+        ); // 5 minutes
     }
 
     let open_modal = {
@@ -309,13 +300,8 @@ pub fn app() -> Html {
                         if let Some(input_element) = text_input_ref.cast::<HtmlElement>() {
                             input_element.set_inner_text(content.as_str());
 
-                            // gloo_console::log!("Setting Textarea content");
                             let _result =
                                 input_element.dispatch_event(&InputEvent::new("input").unwrap());
-                            // match result {
-                            //     Ok(x) => gloo_console::log!(format!("{}", x)),
-                            //     Err(x) => gloo_console::log!(x),
-                            // }
                         }
                     });
                 }
@@ -486,8 +472,6 @@ fn apply_settings() {
             }
         })
         .forget();
-
-        // switch_theme(theme.as_str());
     });
 }
 
