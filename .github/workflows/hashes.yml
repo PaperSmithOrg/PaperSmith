@@ -9,7 +9,7 @@ jobs:
   generate_hashes:
     runs-on: ubuntu-latest
     steps:
-      - uses: MCJack123/ghaction-generate-release-hashes@v3
+      - uses: MCJack123/ghaction-generate-release-hashes@v4
         with:
           get-assets: true
           hash-type: md5
