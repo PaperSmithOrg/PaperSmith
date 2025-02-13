@@ -64,7 +64,8 @@ pub fn sidebarwrapper(Props { modal }: &Props) -> Html {
                 }
                 <button
                     class="absolute right-0 w-2 bg-transparent p-0 border-y-0 border-transparent h-full cursor-pointer border-solid hover:border-x-2 hover:border-subtext"
-                    ondblclick={toggle}
+                    title="Collapse Sidebar"
+                    onclick={toggle} /* ondblclick */
                 />
             </div>
         }
