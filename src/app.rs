@@ -157,20 +157,21 @@ pub fn app() -> Html {
             dispatch.reduce_mut(|x| x.changes = false);
         })
     };
-    {
-        let save = save.clone();
-        use_interval(
-            move || {
-                save.emit(MouseEvent::new("Dummy").unwrap());
-            },
-            // if let Some(settings) = state.settings.as_ref() {
-            //     settings.interval
-            // } else {
-            //     Settings::default().interval
-            // },
-            5 * 60 * 1000,
-        ); // 300,000 ms = 5 minutes
-    }
+    // {
+    //     let save = save.clone();
+    //     use_interval(
+    //         move || {
+    //             save.emit(MouseEvent::new("Dummy").unwrap());
+    //             gloo_console::log!("Saved")
+    //         },
+    //         if let Some(settings) = state.settings.as_ref() {
+    //              settings.interval * 60 * 1000
+    //         } else {
+    //             Settings::default().interval * 60 * 1000
+    //         },
+    //         //5 * 60 * 1000,
+    //     ); // 300,000 ms = 5 minutes
+    // }
 
     let open_modal = {
         let modal = modal.clone();
