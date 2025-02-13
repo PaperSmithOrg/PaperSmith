@@ -641,7 +641,7 @@ fn draghandler(DragHandlerProps { index }: &DragHandlerProps) -> Html {
                     return;
                 };
 
-                // Adjust index if it would be moved my removing an the chapter
+                // Adjust index if it would be moved by removing the chapter
                 let adjusted_index = if *dragger_index < index {
                     index - 1
                 } else {
