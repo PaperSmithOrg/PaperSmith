@@ -93,7 +93,7 @@ fn open_explorer(path: String) {
 #[tauri::command]
 fn list_statistic_files() -> Result<Vec<String>, String> {
     let mut path = get_data_dir();
-    path.push_str("/PaperSmith/Statistics");
+    path.push_str("/PaperSmith/Statistics/");
 
     let pattern = format!("{path}/**/*");
     let mut files = Vec::new();
