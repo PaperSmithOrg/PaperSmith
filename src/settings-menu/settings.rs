@@ -1,12 +1,16 @@
 use gloo::utils::document;
+use serde::Serialize;
 use serde_json::json;
+use shared::Settings;
 use wasm_bindgen::{JsCast, JsValue};
-use yew::platform::spawn_local;
 use web_sys::HtmlDocument;
 use web_sys::HtmlSelectElement;
+use yew::platform::spawn_local;
 use yew::prelude::*;
+use yewdux::prelude::*;
 
 use crate::app::invoke;
+use crate::app::State;
 
 use shared::FileWriteData;
 
@@ -15,33 +19,36 @@ pub struct SettingsProps {
     pub closing_callback: Callback<MouseEvent>,
 }
 
+#[derive(Serialize)]
+pub struct LogArgs {
+    pub msg: String,
+}
+
 #[function_component(SettingsMenu)]
 pub fn settings_menu(
     SettingsProps {
         closing_callback: on_close,
     }: &SettingsProps,
 ) -> Html {
+    let (state, dispatch) = use_store::<State>();
+
     let confirm_button_ref = use_node_ref();
-
-    let theme = use_state(|| String::from("Light"));
-
-    let interval = use_state(|| 300_000);
 
     let on_confirm = {
         let on_close = on_close.clone();
-        let theme = theme.clone();
-        let interval = interval.clone();
+        let state = state.clone();
 
         Callback::from(move |_| {
-            let theme = theme.clone();
-            let interval = interval.clone();
+            let state = state.clone();
 
             spawn_local(async move {
-                switch_theme(&theme);
+                let settings = state.settings.clone().unwrap_or_else(|| Settings::default());
+
+                switch_theme(settings.theme.clone());
 
                 let content = json!({
-                    "theme": *theme,
-                    "interval": *interval,
+                    "theme": settings.theme,
+                    "interval": settings.interval,
                 })
                 .to_string();
 
@@ -84,35 +91,68 @@ pub fn settings_menu(
         "Very Dark".to_string(),
     ];
 
+    let intervals = [0, 1, 3, 5, 10, 15, 30];
+
     let onchange = {
+        let state = state.clone();
+        let dispatch = dispatch.clone();
         let select_ref = switch_ref.clone();
 
         Callback::from(move |_| {
+            let state = state.clone();
+            let dispatch = dispatch.clone();
             let select = select_ref.cast::<HtmlSelectElement>();
-            let theme = theme.clone();
+            let settings = state.settings.clone().unwrap_or_else(|| Settings::default());
 
             if let Some(select) = select {
-                theme.set(select.value());
+                let value = select.value();
+
+                let prev = settings.theme;
+
+
+                let mut temp_settings = state.settings.as_ref().unwrap().clone();
+
+                temp_settings.theme = value.clone();
+
+                dispatch.reduce_mut(|state| state.settings = Some(temp_settings));
+
+                spawn_local(async move {
+                    let msg = LogArgs {
+                        msg: format!("{prev:?} -> {value:?}"),
+                    };
+                    gloo_console::log!(format!("{value:?}"));
+                    invoke("log", serde_wasm_bindgen::to_value(&msg).unwrap()).await;
+                });
             }
         })
     };
 
     let on_interval_change = {
+        let state = state.clone();
+        let dispatch = dispatch.clone();
         let select_ref = interval_ref.clone();
 
         Callback::from(move |_| {
+            let state = state.clone();
+            let dispatch = dispatch.clone();
             let select = select_ref.cast::<HtmlSelectElement>();
-            let interval = interval.clone();
 
             if let Some(select) = select {
-                interval.set(select.value().parse::<i32>().unwrap() * 60 * 1_000);
+
+                let mut temp_settings = state.settings.as_ref().unwrap().clone();
+
+                temp_settings.interval = select.value().parse::<u32>().unwrap() * 60 * 1000;
+
+                dispatch.reduce_mut(|state| state.settings = Some(temp_settings));
             }
         })
     };
 
-    let themes_vec = themes_to_html(&themes);
+    let settings = state.settings.clone().unwrap_or_else(|| Settings::default());
 
-    let interval_vec = get_intervals();
+    let themes_vec = themes_to_html(&themes, settings.theme.clone());
+
+    let interval_vec = get_intervals(&intervals, settings.interval.clone());
 
     html!(
         <>
@@ -164,27 +204,28 @@ pub fn settings_menu(
     )
 }
 
-fn themes_to_html(themes: &[String]) -> Html {
+fn themes_to_html(themes: &[String], current: String) -> Html {
     themes
         .iter()
         .map(|theme| {
-            html! { <option value={theme.clone()}>{ theme }</option> }
+            let selected = current == *theme;
+            gloo_console::log!(format!("{theme:?} is {selected:?}"));
+            html! { <option value={theme.clone()} selected={selected}>{ theme }</option> }
         })
         .collect()
 }
 
-fn get_intervals() -> Html {
-    let intervals = [0, 1, 3, 5, 10, 15, 30];
-
+fn get_intervals(intervals: &[i32], current: u32) -> Html {
     intervals
         .iter()
         .map(|interval| {
-            html! { <option value={ interval.to_string() }>{ interval.to_string() + "min" }</option> }
+            let selected = current == *interval as u32;
+            html! { <option value={ interval.to_string()} selected={selected}>{ interval.to_string() + "min" }</option> }
         })
         .collect()
 }
 
-fn switch_theme(theme: &UseStateHandle<String>) {
+fn switch_theme(theme: String) {
     let html_doc: HtmlDocument = document().dyn_into().unwrap();
     let body = html_doc.body().unwrap();
     let theme = theme.as_str();

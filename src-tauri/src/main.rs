@@ -10,9 +10,12 @@ use saving::create_directory;
 use saving::create_empty_file;
 use std::fs;
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::Read;
 use std::io::Write;
+use std::path::Path;
 use std::process::Command;
+use std::time::SystemTime;
 
 mod loader;
 use loader::parse_project;
@@ -54,10 +57,55 @@ fn main() {
             read_json_file,
             write_project_config,
             create_directory,
+            log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[tauri::command]
+fn log(msg: String) {
+    let mut path = get_data_dir();
+    path.push_str("/PaperSmith/papersmith.log");
+
+    if !Path::new(path.as_str()).exists() {
+        match File::create(path) {
+            Ok(_) => return,
+            Err(e) => {
+                eprintln!("Error creating log file: {e:?}");
+                return;
+            }
+        }
+    }
+
+    let mut file = match OpenOptions::new()
+        .append(true)
+        .write(true)
+        .create(true)
+        .open(path)
+    {
+        Ok(f) => {
+            println!("created log file");   
+            f
+        },
+        Err(e) => {
+            eprintln!("Failed to open or create the file: {e:?}");
+            return;
+        }
+    };
+
+    let now = SystemTime::now();
+    let log_msg = String::from(format!("[{now:?}]\t{msg:?}\n"));
+
+    match file.write(log_msg.as_bytes()) {
+        Ok(_) => return,
+        Err(e) => {
+            eprintln!("Failed to write to log file: {e:?}");
+            return;
+        }
+    }
+}
+
 #[tauri::command]
 fn get_file_content(path: String) -> String {
     info!("Reading file: {path}");
@@ -234,9 +282,6 @@ fn get_data_dir() -> String {
 
 #[tauri::command]
 fn write_to_file(path: &str, content: &str) {
-    use std::fs::{self, OpenOptions};
-    use std::io::Write;
-
     // Ensure the directory exists
     let path = std::path::Path::new(path);
     if let Some(parent) = path.parent() {
