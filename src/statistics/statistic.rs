@@ -301,7 +301,7 @@ pub fn StatisticWindow(
                         </label>
                         <select
                             ref={select_ref}
-                            class="bg-subtext rounded-lg text-mantle focus:ring-accent border border-primary p-2 w-full"
+                            class="bg-mantle text-subtext rounded-lg focus:ring-accent border border-primary p-2 w-full"
                             onchange={onchange}
                         >
                             { files_to_html(&files) }
