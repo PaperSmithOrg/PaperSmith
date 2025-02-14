@@ -50,7 +50,6 @@ fn main() {
             get_file_content,
             get_settings,
             list_statistic_files,
-            unformat_file_name,
             read_json_file,
             write_project_config,
             create_directory,
@@ -138,17 +137,6 @@ fn format_file_name(file_name: &str) -> Option<String> {
 }
 
 #[tauri::command]
-fn unformat_file_name(name: &str) -> Option<String> {
-    let parts: Vec<&str> = name.split(' ').collect();
-    if parts.len() == 2 {
-        let date = parts[0];
-        let time = parts[1].replace(':', "-");
-        return Some(format!("{date}T{time}.json"));
-    }
-    None
-}
-
-#[tauri::command]
 fn read_json_file(path: String) -> Option<String> {
     fs::read_to_string(path).map_or(None, |content| {
         match serde_json::from_str::<serde_json::Value>(&content) {
@@ -178,7 +166,8 @@ fn get_documents_folder() -> String {
 // }
 
 #[tauri::command]
-fn write_to_json(path: &str, name: &str, content: &str) {
+#[allow(clippy::needless_pass_by_value)]
+fn write_to_json(path: String, name: String, content: String) {
     let file_name = format!("{name}.json");
     let file_path = format!("{path}/{file_name}");
 
@@ -194,7 +183,8 @@ fn write_to_json(path: &str, name: &str, content: &str) {
 }
 
 #[tauri::command]
-fn get_settings(path: &str) -> Settings {
+#[allow(clippy::needless_pass_by_value)]
+fn get_settings(path: String) -> Settings {
     let file_path = format!("{path}/settings.json");
 
     let file = File::open(&file_path);
@@ -211,7 +201,7 @@ fn get_settings(path: &str) -> Settings {
                     return settings;
                 }
                 Err(e) => {
-                    eprint!("Settings were not readable! Error: {:?}", e);
+                    eprint!("Settings were not readable! Error: {e:?}");
                 }
             }
 
@@ -233,12 +223,13 @@ fn get_data_dir() -> String {
 }
 
 #[tauri::command]
-fn write_to_file(path: &str, content: &str) {
+#[allow(clippy::needless_pass_by_value)]
+fn write_to_file(path: String, content: String) {
     use std::fs::{self, OpenOptions};
     use std::io::Write;
 
     // Ensure the directory exists
-    let path = std::path::Path::new(path);
+    let path = std::path::Path::new(&path);
     if let Some(parent) = path.parent() {
         if !parent.exists() {
             match fs::create_dir_all(parent) {

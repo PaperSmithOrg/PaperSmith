@@ -15,6 +15,7 @@ mod wpm;
 use wpm::calculate as calculate_wpm;
 
 use crate::app::invoke;
+use crate::app::PathArgs;
 use shared::FileWriteData;
 
 #[derive(Properties, PartialEq)]
@@ -26,27 +27,6 @@ pub struct StatisticsProps {
 pub struct StatisticsWindowProps {
     pub closing_callback: Callback<MouseEvent>,
 }
-
-// #[derive(Properties, PartialEq)]
-// pub struct StatisticProp {
-//     pub char_count: usize,
-//     pub pages_ref: NodeRef,
-// }
-
-#[derive(Serialize)]
-pub struct PathArgs {
-    pub name: String,
-}
-#[derive(Serialize)]
-pub struct PathArgsJson {
-    pub path: String,
-}
-
-// #[derive(Properties, PartialEq)]
-// pub struct StatisticProp {
-//     pub char_count: usize,
-//     pub pages_ref: NodeRef,
-// }
 
 #[derive(Deserialize, Serialize, Debug)]
 struct FileContent {
@@ -66,7 +46,6 @@ pub fn Statistics(StatisticsProps { pages_ref }: &StatisticsProps) -> Html {
     let start_time = use_state(Local::now);
     let calculated_wpm = calculate_wpm(*word_count, Some(*start_time));
 
-    // Use an interval to update statistics every 1500 milliseconds
     {
         let char_count = char_count.clone();
         let char_count_no_spaces = char_count_no_spaces.clone();
@@ -74,84 +53,84 @@ pub fn Statistics(StatisticsProps { pages_ref }: &StatisticsProps) -> Html {
         let session_time = session_time.clone();
         let pages_ref = pages_ref.clone();
         use_interval(
-            {
-                move || {
-                    let char_count = char_count.clone();
-                    let char_count_no_spaces = char_count_no_spaces.clone();
-                    let word_count = word_count.clone();
-                    let session_time = session_time.clone();
-                    let start_time = start_time.clone();
-                    let pages_ref = pages_ref.clone();
-                    spawn_local(async move {
-                        if let Some(pages_element) = pages_ref.cast::<HtmlElement>() {
-                            // Locate the `notepad-textarea-edit` using query_selector
-                            if let Ok(Some(notepad_element)) =
-                                pages_element.query_selector("#notepad-textarea-edit")
-                            {
-                                let text = notepad_element.text_content().unwrap_or_default();
+            move || {
+                let char_count = char_count.clone();
+                let char_count_no_spaces = char_count_no_spaces.clone();
+                let word_count = word_count.clone();
+                let session_time = session_time.clone();
+                let start_time = start_time.clone();
+                let pages_ref = pages_ref.clone();
+                spawn_local(async move {
+                    let Some(pages_element) = pages_ref.cast::<HtmlElement>() else {
+                        return;
+                    };
+                    // Locate the `notepad-textarea-edit` using query_selector
+                    let Ok(Some(notepad_element)) =
+                        pages_element.query_selector("#notepad-textarea-edit")
+                    else {
+                        return;
+                    };
 
-                                // Update character counts
-                                let count = text.len();
-                                let count_no_spaces =
-                                    text.chars().filter(|c| !c.is_whitespace()).count();
-                                char_count.set(count);
-                                char_count_no_spaces.set(count_no_spaces);
+                    let text = notepad_element.text_content().unwrap_or_default();
 
-                                // Update word count
-                                let word_count_value = text.split_whitespace().count();
-                                word_count.set(word_count_value);
+                    // Update character counts
+                    let count = text.len();
+                    let count_no_spaces = text.chars().filter(|c| !c.is_whitespace()).count();
+                    char_count.set(count);
+                    char_count_no_spaces.set(count_no_spaces);
 
-                                // Update session time
-                                let current_time = Local::now();
-                                let session_duration = current_time - *start_time;
-                                let total_seconds = session_duration.num_seconds();
-                                let hours = total_seconds / 3600;
-                                let minutes = (total_seconds % 3600) / 60;
-                                let seconds = total_seconds % 60;
-                                session_time.set(format!("{hours:02}:{minutes:02}:{seconds:02}"));
+                    // Update word count
+                    let word_count_value = text.split_whitespace().count();
+                    word_count.set(word_count_value);
 
-                                let json = json!({
-                                    "session_time": (*session_time).clone(),
-                                    "word_count": word_count_value,
-                                    "char_count": count,
-                                    "char_count_with_no_spaces": *char_count_no_spaces.clone(),
-                                    "wpm": calculated_wpm
-                                })
-                                .to_string();
+                    // Update session time
+                    let current_time = Local::now();
+                    let session_duration = current_time - *start_time;
+                    let total_seconds = session_duration.num_seconds();
+                    let hours = total_seconds / 3600;
+                    let minutes = (total_seconds % 3600) / 60;
+                    let seconds = total_seconds % 60;
+                    session_time.set(format!("{hours:02}:{minutes:02}:{seconds:02}"));
 
-                                let formatted_time =
-                                    start_time.format("%Y-%m-%dT%H-%M-%S").to_string();
+                    let json = json!({
+                        "session_time": (*session_time).clone(),
+                        "word_count": word_count_value,
+                        "char_count": count,
+                        "char_count_with_no_spaces": *char_count_no_spaces.clone(),
+                        "wpm": calculated_wpm
+                    })
+                    .to_string();
 
-                                let path_jsvalue = invoke("get_data_dir", JsValue::null()).await;
+                    let formatted_time = start_time.format("%Y-%m-%dT%H-%M-%S").to_string();
 
-                                let mut path_string =
-                                    path_jsvalue.as_string().expect("Geming").clone();
+                    let path_jsvalue = invoke("get_data_dir", JsValue::NULL).await;
 
-                                path_string.push_str("/PaperSmith/Statistics");
+                    let Some(mut path_string) = path_jsvalue.as_string() else {
+                        gloo_console::log!("Couldn't get data directory");
+                        return;
+                    };
 
-                                let json_write = FileWriteData {
-                                    path: path_string,
-                                    name: formatted_time,
-                                    content: json,
-                                };
+                    path_string.push_str("/PaperSmith/Statistics");
 
-                                invoke(
-                                    "write_to_json",
-                                    serde_wasm_bindgen::to_value(&json_write).unwrap(),
-                                )
-                                .await;
-                            }
-                        }
-                    });
-                }
+                    let json_write = FileWriteData {
+                        path: path_string,
+                        name: formatted_time,
+                        content: json,
+                    };
+
+                    if let Ok(args) = serde_wasm_bindgen::to_value(&json_write) {
+                        invoke("write_to_json", args).await;
+                    }
+                });
             },
-            500,
+            1000,
         );
     }
 
     html! {
         <div>
-            { format!("{}, {} Words; Characters: {}, {} without spaces, {:.2} wpm", *session_time, *word_count, *char_count,*char_count_no_spaces, calculated_wpm) }
+            { format!("{}, {} Words; Characters: {}, {} without spaces, {:.2} wpm"
+            , *session_time, *word_count, *char_count,*char_count_no_spaces, calculated_wpm) }
         </div>
     }
 }
@@ -162,7 +141,7 @@ pub fn StatisticWindow(
         closing_callback: on_close,
     }: &StatisticsWindowProps,
 ) -> Html {
-    let files = use_state(Vec::new);
+    let files: UseStateHandle<Vec<String>> = use_state(Vec::new);
     let selected_file = use_state(String::new);
     let file_content = use_state(String::new);
     let select_ref = use_node_ref();
@@ -176,92 +155,76 @@ pub fn StatisticWindow(
             let selected_file = selected_file.clone();
             let file_content = file_content.clone();
 
-            let _ = Timeout::new(10, {
-                move || {
-                    let select = select_ref.cast::<HtmlSelectElement>();
+            let _ = Timeout::new(10, move || {
+                let select = select_ref.cast::<HtmlSelectElement>();
 
-                    if let Some(select) = select {
-                        let selected_file_value = select.value();
+                let Some(select) = select else{ return; };
+                let selected_file_value = select.value();
 
-                        {
-                            let file_content = file_content.clone();
-                            spawn_local(async move {
-                                let selected_file_value = selected_file_value.clone();
-                                let file_content = file_content.clone();
+                spawn_local(async move {
+                    let selected_file_value = selected_file_value.clone();
+                    let file_content = file_content.clone();
 
-                                let file_name = PathArgs {
-                                    name: selected_file_value.clone(),
-                                };
+                    gloo_console::log!(format!("{}", selected_file_value));
 
-                                gloo_console::log!(format!("{}", selected_file_value));
+                    let parts: Vec<&str> = selected_file_value.split(' ').collect();
+                    let file_name = if parts.len() == 2 {
+                        let date = parts[0];
+                        let time = parts[1].replace(':', "-");
+                        format!("{date}T{time}.json")
+                    } else {
+                        gloo_console::log!(format!("Couldnt read file name: {}", selected_file_value));
+                        return;
+                    };
 
-                                let file_name_jsvalue = invoke(
-                                    "unformat_file_name",
-                                    serde_wasm_bindgen::to_value(&file_name).unwrap(),
-                                )
-                                .await;
+                    gloo_console::log!(format!("{}", file_name));
 
-                                let file_name = serde_wasm_bindgen::from_value::<Option<String>>(
-                                    file_name_jsvalue,
-                                )
-                                .unwrap()
-                                .unwrap();
-                                gloo_console::log!(format!("{}", file_name));
+                    let path_jsvalue = invoke("get_data_dir", JsValue::NULL).await;
 
+                    let Some(mut base_path) = path_jsvalue.as_string() else {
+                        gloo_console::log!("Couldn't get data directory");
+                        return;
+                    };
 
-                                let base_path_jsvalue = invoke("get_data_dir", JsValue::null()).await;
+                    base_path.push_str("/PaperSmith/Statistics/");
+                    base_path.push_str(&file_name);
 
-                                let mut base_path = serde_wasm_bindgen::from_value::<Option<String>>(
-                                    base_path_jsvalue,
-                                )
-                                .unwrap()
-                                .unwrap();
+                    //gloo_console::log!(format!("{}",path));
 
-                                base_path.push_str("/PaperSmith/Statistics");
-                                base_path.push_str(&file_name);
+                    let path = PathArgs {
+                        path: base_path.clone(),
+                    };
 
-                                //gloo_console::log!(format!("{}",path));
-
-                                let path = PathArgsJson {
-                                    path: base_path.clone(),
-                                };
-
-                                let file_content_jsvalue = invoke(
-                                    "read_json_file",
-                                    serde_wasm_bindgen::to_value(&path).unwrap(),
-                                )
-                                .await;
-
-                                let temp_string: Option<String> = serde_wasm_bindgen::from_value(file_content_jsvalue).unwrap();
-                                    if let Some(content) = temp_string {
-                                        gloo_console::log!(format!("File Content: {}", content));
-
-                                        let parsed_content: Result<FileContent, _> =
-                                        serde_json::from_str(&content);
-
-                                    if let Ok(parsed) = parsed_content {
-                                        let display_content = format!(
-                                            "Session Time: {}\nWords: {}\nCharacter Count: {}\nCharacters without spaces: {}\nWPM: {}",
-                                            parsed.session_time,
-                                            parsed.word_count,
-                                            parsed.char_count,
-                                            parsed.char_count_with_no_spaces,
-                                            parsed.wpm
-                                        );
-                                        file_content.set(display_content);
-                                    } else {
-                                        gloo_console::log!(format!("Failed to parse JSON into FileContent struct."));
-                                    }
-                                } else {
-                                    gloo_console::log!(format!("Failed to read file content."));
-                                    file_content.set(String::from("Failed to load file content."));
-                                }
-                            });
+                    let content = if let Ok(args) = serde_wasm_bindgen::to_value(&path) {
+                        if let Some(content) = invoke("read_json_file", args).await.as_string() { content } else {
+                            gloo_console::log!("Failed to read file content.");
+                            file_content.set("Failed to load file content.".to_string());
+                            return;
                         }
+                    } else {
+                        return;
+                    };
 
-                        selected_file.set(select.value());
+                    gloo_console::log!(format!("File Content: {}", content));
+
+                    let parsed_content: Result<FileContent, _> =
+                    serde_json::from_str(&content);
+
+                    if let Ok(parsed) = parsed_content {
+                        let display_content = format!(
+                            "Session Time: {}\nWords: {}\nCharacter Count: {}\nCharacters without spaces: {}\nWPM: {}",
+                            parsed.session_time,
+                            parsed.word_count,
+                            parsed.char_count,
+                            parsed.char_count_with_no_spaces,
+                            parsed.wpm
+                        );
+                        file_content.set(display_content);
+                    } else {
+                        gloo_console::log!(format!("Failed to parse JSON into FileContent struct."));
                     }
-                }
+                });
+                selected_file.set(select.value());
             })
             .forget();
         })
@@ -269,22 +232,22 @@ pub fn StatisticWindow(
 
     {
         let files = files.clone();
-        use_interval(
-            move || {
-                let files = files.clone();
-
-                {
-                    spawn_local(async move {
-                        let file_list = invoke("list_statistic_files", JsValue::NULL).await;
-                        let file_list: Vec<String> = from_value(file_list).unwrap();
-
-                        files.set(file_list);
-                    });
+        use_effect_with((), move |()| {
+            spawn_local(async move {
+                let file_list = invoke("list_statistic_files", JsValue::NULL).await;
+                if let Ok(file_list) = from_value(file_list) {
+                    files.set(file_list);
                 }
-            },
-            1000,
-        );
+            });
+        });
     }
+
+    let files_html: Html = files
+        .iter()
+        .map(|file| {
+            html! { <option class="bg-mantle" value={file.clone()}>{ file }</option> }
+        })
+        .collect();
 
     html! {
         <>
@@ -294,20 +257,20 @@ pub fn StatisticWindow(
                 </label>
                 <select
                     ref={select_ref}
-                    class="bg-subtext rounded-lg text-mantle focus:ring-accent border border-primary p-2 w-full"
+                    class="bg-mantle rounded-lg text-subtext focus:ring-accent border border-primary p-2 w-full"
                     onchange={onchange}
                 >
-                    { files_to_html(&files) }
+                    { files_html }
                 </select>
             </div>
             <div class="mt-4">
                 <label class="block text-subtext font-medium mb-2">{ "File Content" }</label>
                 <div class="bg-mantle p-4 rounded-lg">
                     { if (*file_content).is_empty() {
-                               html! { <p class="text-subtext">{"No content to display."}</p> }
-                            } else {
-                               html! { <pre class="text-text whitespace-pre-wrap overflow-auto">{ &*file_content }</pre> }
-                            } }
+                       html! { <p class="text-subtext">{"No content to display."}</p> }
+                    } else {
+                       html! { <pre class="text-text whitespace-pre-wrap overflow-auto">{ &*file_content }</pre> }
+                    } }
                 </div>
             </div>
             <button
@@ -318,13 +281,4 @@ pub fn StatisticWindow(
             </button>
         </>
     }
-}
-
-fn files_to_html(files: &[String]) -> Html {
-    files
-        .iter()
-        .map(|file| {
-            html! { <option class="bg-mantle" value={file.clone()}>{ file }</option> }
-        })
-        .collect()
 }
