@@ -16,10 +16,10 @@ use renaming_modal::RenamingModal;
 
 use crate::app::invoke;
 use crate::app::modal_system::Modal;
-use crate::app::wizard::PathArgs;
 use crate::app::ButtonContainer;
 use crate::app::ButtonProps;
 use crate::app::FileWriteData;
+use crate::app::PathArgs;
 use crate::app::State;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]

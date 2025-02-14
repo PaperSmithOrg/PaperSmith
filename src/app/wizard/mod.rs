@@ -1,11 +1,11 @@
-use crate::app::{invoke, State};
+use crate::app::{invoke, PathArgs, State};
 use serde::Serialize;
 use serde_wasm_bindgen::to_value;
 use shared::Project;
 use std::path::PathBuf;
 use wasm_bindgen::JsValue;
-use yew::platform::spawn_local;
 use web_sys::{HtmlButtonElement, HtmlInputElement};
+use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_icons::{Icon, IconId};
 use yewdux::prelude::*;
@@ -19,11 +19,6 @@ pub struct Props {
 #[derive(Serialize)]
 struct TitleArgs {
     title: String,
-}
-
-#[derive(Serialize)]
-pub struct PathArgs {
-    pub path: String,
 }
 
 #[function_component(ProjectWizard)]

@@ -1,8 +1,6 @@
 use gloo::utils::document;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
-use serde_wasm_bindgen::from_value;
-use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
@@ -11,7 +9,6 @@ use web_sys::HtmlElement;
 use yew::events::MouseEvent;
 use yew::platform::spawn_local;
 use yew::prelude::*;
-use yew_hooks::use_interval;
 use yew_icons::IconId;
 use yewdux::prelude::*;
 
@@ -144,17 +141,6 @@ pub fn app() -> Html {
             dispatch.reduce_mut(|x| x.changes = false);
         })
     };
-    {
-        let save = save.clone();
-        use_interval(
-            move || {
-                if let Ok(event) = MouseEvent::new("click") {
-                    save.emit(event);
-                }
-            },
-            5 * 60 * 1000,
-        ); // 5 minutes
-    }
 
     let open_statistics = {
         let modal = modal.clone();
@@ -247,7 +233,7 @@ pub fn app() -> Html {
                         content_path.set_extension("md");
                         let content = invoke(
                             "get_file_content",
-                            to_value(&PathArgs {
+                            serde_wasm_bindgen::to_value(&PathArgs {
                                 path: content_path.to_str().unwrap().to_string(),
                             })
                             .unwrap(),
@@ -356,7 +342,7 @@ fn apply_settings() {
 
         path.push_str("/PaperSmith");
 
-        if let Ok(args) = to_value(&PathArgs { path: path.clone() }) {
+        if let Ok(args) = serde_wasm_bindgen::to_value(&PathArgs { path: path.clone() }) {
             let result = invoke("can_create_path", args.clone()).await.as_string();
             if result.unwrap_or_default().is_empty() {
                 invoke("create_directory", args).await;
@@ -366,7 +352,7 @@ fn apply_settings() {
         let mut statistics_path = path.clone();
         statistics_path.push_str("/Statistics");
 
-        if let Ok(args) = to_value(&PathArgs {
+        if let Ok(args) = serde_wasm_bindgen::to_value(&PathArgs {
             path: statistics_path.clone(),
         }) {
             let result = invoke("can_create_path", args.clone()).await.as_string();
@@ -375,10 +361,10 @@ fn apply_settings() {
             }
         }
 
-        if let Ok(args) = to_value(&PathArgs { path }) {
+        if let Ok(args) = serde_wasm_bindgen::to_value(&PathArgs { path }) {
             let settings_jsvalue = invoke("get_settings", args).await;
 
-            let Ok(settings) = from_value::<Settings>(settings_jsvalue) else {
+            let Ok(settings) = serde_wasm_bindgen::from_value::<Settings>(settings_jsvalue) else {
                 return;
             };
 

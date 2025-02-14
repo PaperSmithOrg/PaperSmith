@@ -1,9 +1,9 @@
 use gloo::utils::document;
 use serde_json::json;
 use wasm_bindgen::{JsCast, JsValue};
-use yew::platform::spawn_local;
 use web_sys::HtmlDocument;
 use web_sys::HtmlSelectElement;
+use yew::platform::spawn_local;
 use yew::prelude::*;
 
 use crate::app::invoke;
@@ -47,7 +47,7 @@ pub fn settings_menu(
 
                 let name = String::from("settings");
 
-                let path_jsvalue = invoke("get_data_dir", JsValue::null()).await;
+                let path_jsvalue = invoke("get_data_dir", JsValue::NULL).await;
 
                 let mut path = path_jsvalue.as_string().expect("Cast failed").clone();
 
@@ -122,27 +122,27 @@ pub fn settings_menu(
                 <div class="font-bold self-center">{ "Theme" }</div>
                 // <ThemeSwitcher theme={theme}/>
                 <div>
-                        <select
-                            ref={switch_ref}
-                            onchange={onchange}
-                            class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
-                        >
-                            { themes_vec }
-                        </select>
+                    <select
+                        ref={switch_ref}
+                        onchange={onchange}
+                        class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
+                    >
+                        { themes_vec }
+                    </select>
                 </div>
             </div>
             <br />
             <div id="interval_change" class="flex w-full pt-8 justify-between">
                 <div class="font-bold self-center">{ "Auto-Save Interval" }</div>
                 // <ThemeSwitcher theme={theme}/>
-                    <div>
-                        <select
-                            ref={interval_ref}
-                            onchange={on_interval_change}
-                            class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
-                        >
-                            { interval_vec }
-            </select>
+                <div>
+                    <select
+                        ref={interval_ref}
+                        onchange={on_interval_change}
+                        class="bg-base rounded-lg text-text focus:ring-secondary border-1 border-primary"
+                    >
+                        { interval_vec }
+                    </select>
                 </div>
             </div>
             <div class="flex justify-end w-full pt-8">
@@ -179,7 +179,7 @@ fn get_intervals() -> Html {
     intervals
         .iter()
         .map(|interval| {
-            html! { <option value={ interval.to_string() }>{ interval.to_string() + "min" }</option> }
+            html! { <option value={interval.to_string()}>{ interval.to_string() + "min" }</option> }
         })
         .collect()
 }
