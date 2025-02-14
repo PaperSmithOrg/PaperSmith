@@ -128,7 +128,7 @@ pub fn Statistics(StatisticsProps { pages_ref }: &StatisticsProps) -> Html {
                                 let mut path_string =
                                     path_jsvalue.as_string().expect("Geming").clone();
 
-                                path_string.push_str("/PaperSmith/Statistics");
+                                path_string.push_str("/PaperSmith/Statistics/");
 
                                 let json_write = FileWriteData {
                                     path: path_string,
@@ -218,7 +218,7 @@ pub fn StatisticWindow(
                                 .unwrap()
                                 .unwrap();
 
-                                base_path.push_str("/PaperSmith/Statistics");
+                                base_path.push_str("/PaperSmith/Statistics/");
                                 base_path.push_str(&file_name);
 
                                 //gloo_console::log!(format!("{}",path));
