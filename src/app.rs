@@ -13,7 +13,6 @@ use web_sys::HtmlElement;
 use yew::events::MouseEvent;
 use yew::platform::spawn_local;
 use yew::prelude::*;
-use yew_hooks::use_interval;
 use yew_icons::IconId;
 use yewdux::prelude::*;
 
@@ -23,15 +22,7 @@ use shared::Settings;
 mod notepad;
 use notepad::Notepads;
 
-#[path = "toolbar/toolbar.rs"]
-mod toolbar;
-use toolbar::Toolbar;
-
-//#[path = "text_alignment_handlers.rs"]
-//mod text_alignment_handlers;
-//use text_alignment_handlers::TextAlignmentControls;
-
-#[path = "menubar/text/text_styling_handlers.rs"]
+#[path = "menubar/text_styling_handlers.rs"]
 mod text_styling_handlers;
 use text_styling_handlers::TextStylingControls;
 
@@ -370,7 +361,6 @@ pub fn app() -> Html {
             <div class="light lightdark medium dark verydark" />
             <div class="modal-wrapper">{ (*modal).clone() }</div>
             <style id="dynamic-style" />
-            <Toolbar />
             <div class="h-8 flex justify-left items-center p-2 bg-crust">
                 <Button
                     callback={open_modal}
