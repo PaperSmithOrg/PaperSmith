@@ -91,9 +91,18 @@ pub fn notepads(
 fn rendering_handler(render_ref: &NodeRef, new_lines: &[String]) {
     let mut last_was_empty = false;
 
-    let mark_regex = Regex::new(r"::(.*?)::").unwrap();
-    let underline_regex = Regex::new(r"__(.*?)__").unwrap();
-    let image_regex = Regex::new(r"!\(\s*(.*?)\s*\)").unwrap();
+    let Ok(mark_regex) = Regex::new(r"::(.*?)::") else {
+        gloo_console::log!("Invalid Regex");
+        return;
+    };
+    let Ok(underline_regex) = Regex::new(r"__(.*?)__") else {
+        gloo_console::log!("Invalid Regex");
+        return;
+    };
+    let Ok(image_regex) = Regex::new(r"!\(\s*(.*?)\s*\)") else {
+        gloo_console::log!("Invalid Regex");
+        return;
+    };
 
     let html_strings: Vec<String> = new_lines
         .iter()
