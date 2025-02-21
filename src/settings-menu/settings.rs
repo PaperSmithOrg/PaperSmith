@@ -42,7 +42,10 @@ pub fn settings_menu(
             let state = state.clone();
 
             spawn_local(async move {
-                let settings = state.settings.clone().unwrap_or_else(|| Settings::default());
+                let settings = state
+                    .settings
+                    .clone()
+                    .unwrap_or_else(|| Settings::default());
 
                 switch_theme(settings.theme.clone());
 
@@ -102,13 +105,15 @@ pub fn settings_menu(
             let state = state.clone();
             let dispatch = dispatch.clone();
             let select = select_ref.cast::<HtmlSelectElement>();
-            let settings = state.settings.clone().unwrap_or_else(|| Settings::default());
+            let settings = state
+                .settings
+                .clone()
+                .unwrap_or_else(|| Settings::default());
 
             if let Some(select) = select {
                 let value = select.value();
 
                 let prev = settings.theme;
-
 
                 let mut temp_settings = state.settings.as_ref().unwrap().clone();
 
@@ -136,19 +141,37 @@ pub fn settings_menu(
             let state = state.clone();
             let dispatch = dispatch.clone();
             let select = select_ref.cast::<HtmlSelectElement>();
+            let settings = state
+                .settings
+                .clone()
+                .unwrap_or_else(|| Settings::default());
 
             if let Some(select) = select {
+                let value = select.value();
+
+                let prev = settings.interval;
 
                 let mut temp_settings = state.settings.as_ref().unwrap().clone();
 
                 temp_settings.interval = select.value().parse::<u32>().unwrap() * 60 * 1000;
 
                 dispatch.reduce_mut(|state| state.settings = Some(temp_settings));
+
+                spawn_local(async move {
+                    let msg = LogArgs {
+                        msg: format!("{prev:?} -> {value:?}"),
+                    };
+                    gloo_console::log!(format!("{value:?}"));
+                    invoke("log", serde_wasm_bindgen::to_value(&msg).unwrap()).await;
+                });
             }
         })
     };
 
-    let settings = state.settings.clone().unwrap_or_else(|| Settings::default());
+    let settings = state
+        .settings
+        .clone()
+        .unwrap_or_else(|| Settings::default());
 
     let themes_vec = themes_to_html(&themes, settings.theme.clone());
 
@@ -219,7 +242,8 @@ fn get_intervals(intervals: &[i32], current: u32) -> Html {
     intervals
         .iter()
         .map(|interval| {
-            let selected = current == *interval as u32;
+            let time = *interval as u32;
+            let selected = current == time * 60 * 1_000;
             html! { <option value={ interval.to_string()} selected={selected}>{ interval.to_string() + "min" }</option> }
         })
         .collect()

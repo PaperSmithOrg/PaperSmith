@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use gloo::utils::document;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
@@ -14,6 +16,7 @@ use yew::events::MouseEvent;
 use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_icons::IconId;
+use yewdux::dispatch;
 use yewdux::prelude::*;
 
 use shared::Settings;
@@ -240,6 +243,8 @@ pub fn app() -> Html {
 
     let on_load = {
         let modal = modal.clone();
+        let dispatch = dispatch.clone();
+
         Callback::from(move |_| {
             let modal = modal.clone();
             let dispatch = dispatch.clone();
@@ -266,8 +271,11 @@ pub fn app() -> Html {
     });
 
     {
+        let state = state.clone();
+        let dispatch = dispatch.clone();
+
         use_effect_with((), move |()| {
-            apply_settings();
+            apply_settings(state, dispatch);
         });
     }
     {
@@ -412,7 +420,7 @@ pub fn app() -> Html {
     }
 }
 
-fn apply_settings() {
+fn apply_settings(state: Rc<State>, dispatch: Dispatch<State>) {
     spawn_local(async move {
         let path_jsvalue = invoke("get_data_dir", JsValue::NULL).await;
 
@@ -473,26 +481,17 @@ fn apply_settings() {
         )
         .await;
 
-        let settings_result = serde_wasm_bindgen::from_value::<Settings>(settings_jsvalue);
+        let settings_result: Option<Settings> = serde_wasm_bindgen::from_value(settings_jsvalue).unwrap();
 
-        let settings = settings_result.unwrap();
+        if let Some(settings) = settings_result.clone() {
+            dispatch.reduce_mut(|state| state.settings = settings_result);
 
-        let theme = settings.theme;
-
-        println!("{theme:?}");
-
-        let _ = Timeout::new(10, {
-            move || {
-                switch_theme(&theme);
-            }
-        })
-        .forget();
-
-        // switch_theme(theme.as_str());
+            switch_theme(settings.theme);
+        }
     });
 }
 
-fn switch_theme(theme: &str) {
+fn switch_theme(theme: String) {
     let html_doc: HtmlDocument = document().dyn_into().unwrap();
     let body = html_doc.body().unwrap();
     let theme2 = theme.to_lowercase().replace(' ', "");
