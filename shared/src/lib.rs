@@ -15,6 +15,12 @@ pub struct Settings {
     pub interval: u32,
 }
 
+impl Settings {
+    pub fn new(theme: String, interval: u32) -> Settings {
+        Self { theme, interval }
+    }
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {

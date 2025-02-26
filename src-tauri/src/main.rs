@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use dark_light::Mode;
 use glob::glob;
 use loader::write_project_config;
 use log::info;
@@ -16,6 +17,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
+use dark_light;
 
 mod loader;
 use loader::parse_project;
@@ -61,6 +63,24 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn get_systemtheme() -> String {
+    let system_theme = dark_light::detect();
+
+    match system_theme {
+        Ok(theme) => {
+            match theme {
+                Mode::Dark => String::from("Dark"),
+                Mode::Light => String::from("Light"),
+                Mode::Unspecified => String::new(),
+            }
+        },
+        Err(e) => {
+            log(format!("Error getting System Theme: {e:?}"));
+            String::new()
+        }
+    }
 }
 
 #[tauri::command]
@@ -186,7 +206,8 @@ fn format_file_name(file_name: &str) -> Option<String> {
 }
 
 #[tauri::command]
-fn unformat_file_name(name: &str) -> Option<String> {
+#[allow(clippy::needless_pass_by_value)]
+fn unformat_file_name(name: String) -> Option<String> {
     let parts: Vec<&str> = name.split(' ').collect();
     if parts.len() == 2 {
         let date = parts[0];
@@ -226,7 +247,8 @@ fn get_documents_folder() -> String {
 // }
 
 #[tauri::command]
-fn write_to_json(path: &str, name: &str, content: &str) {
+#[allow(clippy::needless_pass_by_value)]
+fn write_to_json(path: String, name: String, content: String) {
     let file_name = format!("{name}.json");
     let file_path = format!("{path}/{file_name}");
 
@@ -242,7 +264,8 @@ fn write_to_json(path: &str, name: &str, content: &str) {
 }
 
 #[tauri::command]
-fn get_settings(path: &str) -> Settings {
+#[allow(clippy::needless_pass_by_value)]
+fn get_settings(path: String) -> Settings {
     let file_path = format!("{path}/settings.json");
 
     let file = File::open(&file_path);
@@ -259,7 +282,7 @@ fn get_settings(path: &str) -> Settings {
                     return settings;
                 }
                 Err(e) => {
-                    eprint!("Settings were not readable! Error: {:?}", e);
+                    eprint!("Settings were not readable! Error: {e:?}");
                 }
             }
 
@@ -267,7 +290,14 @@ fn get_settings(path: &str) -> Settings {
         }
         Err(e) => {
             eprint!("{e}");
-            Settings::default()
+            let mut settings = Settings::default();
+            let system_theme = get_systemtheme();
+
+            if system_theme != String::new() {
+                settings.theme = system_theme;
+            }
+
+            settings
         }
     }
 }
@@ -281,9 +311,13 @@ fn get_data_dir() -> String {
 }
 
 #[tauri::command]
-fn write_to_file(path: &str, content: &str) {
+#[allow(clippy::needless_pass_by_value)]
+fn write_to_file(path: String, content: String) {
+    use std::fs::{self, OpenOptions};
+    use std::io::Write;
+
     // Ensure the directory exists
-    let path = std::path::Path::new(path);
+    let path = std::path::Path::new(&path);
     if let Some(parent) = path.parent() {
         if !parent.exists() {
             match fs::create_dir_all(parent) {

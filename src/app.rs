@@ -481,7 +481,8 @@ fn apply_settings(state: Rc<State>, dispatch: Dispatch<State>) {
         )
         .await;
 
-        let settings_result: Option<Settings> = serde_wasm_bindgen::from_value(settings_jsvalue).unwrap();
+        let settings_result: Option<Settings> =
+            serde_wasm_bindgen::from_value(settings_jsvalue).unwrap();
 
         if let Some(settings) = settings_result.clone() {
             dispatch.reduce_mut(|state| state.settings = settings_result);
