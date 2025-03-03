@@ -65,6 +65,7 @@ jobs:
           releaseName: "PaperSmith ${{  github.ref_name }}"
           releaseBody: "See the assets to download this version and install."
           iconPath: "src-tauri/icons/icon.png"
+          appVersion: "${{  github.ref_name }}"
           releaseDraft: false
           prerelease: true
           args: ${{ matrix.args }}
