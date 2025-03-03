@@ -7,8 +7,7 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "PaperSmith",
-    "version": "0.0.0"
+    "productName": "PaperSmith"
   },
   "tauri": {
     "allowlist": {
@@ -38,8 +37,8 @@
     },
     "bundle": {
       "active": true,
-      "targets": ["deb", "appimage", "nsis", "msi", "app", "dmg", "updater"],      
-      "identifier": "at.papersmithorg.papersmith",
+      "targets": ["deb", "appimage", "nsis", "msi", "app", "dmg", "updater"],
+      "identifier": "at.PaperSmithOrg.PaperSmith",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
