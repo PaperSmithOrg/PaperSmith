@@ -93,18 +93,12 @@ pub fn app() -> Html {
             let state = state.clone();
 
             spawn_local(async move {
-                if state.project.is_none() {
+                let Some(project) = state.project.as_ref() else {
                     return;
-                }
-                if state.project.as_ref().unwrap().active_chapter.is_none() {
-                    return;
-                }
+                };
                 if let Some(input_element) = text_input_ref.cast::<HtmlElement>() {
                     let text = input_element.inner_text();
 
-                    let Some(project) = state.project.as_ref() else {
-                        return;
-                    };
                     let Some(active_chapter) = project.active_chapter else {
                         return;
                     };
@@ -122,11 +116,9 @@ pub fn app() -> Html {
                         content: text,
                     };
 
-                    invoke(
-                        "write_to_file",
-                        serde_wasm_bindgen::to_value(&write_data).unwrap(),
-                    )
-                    .await;
+                    if let Ok(args) = serde_wasm_bindgen::to_value(&write_data) {
+                        invoke("write_to_file", args).await;
+                    }
 
                     // TODO: add save notifier
                 }
@@ -180,8 +172,12 @@ pub fn app() -> Html {
             let dispatch = dispatch.clone();
             spawn_local(async move {
                 let project_jsvalue = invoke("get_project", JsValue::null()).await;
-                let project_or_none: Option<Project> =
-                    serde_wasm_bindgen::from_value(project_jsvalue).unwrap();
+                let Ok(project_or_none) =
+                    serde_wasm_bindgen::from_value::<Option<Project>>(project_jsvalue)
+                else {
+                    return;
+                };
+
                 if project_or_none.is_some() {
                     dispatch.reduce_mut(|state| state.project = project_or_none);
                     modal.set(html!());
@@ -191,12 +187,18 @@ pub fn app() -> Html {
     };
 
     let on_undo = Callback::from(move |_| {
-        let html_doc: HtmlDocument = document().dyn_into().unwrap();
+        let Ok(html_doc) = document().dyn_into::<HtmlDocument>() else {
+            gloo_console::log!("Couldnt get HTML Document");
+            return;
+        };
         let _ = html_doc.exec_command("undo");
     });
 
     let on_redo = Callback::from(move |_| {
-        let html_doc: HtmlDocument = document().dyn_into().unwrap();
+        let Ok(html_doc) = document().dyn_into::<HtmlDocument>() else {
+            gloo_console::log!("Couldnt get HTML Document");
+            return;
+        };
         let _ = html_doc.exec_command("redo");
     });
 
@@ -376,8 +378,14 @@ fn apply_settings() {
 }
 
 fn switch_theme(theme: &str) {
-    let html_doc: HtmlDocument = document().dyn_into().unwrap();
-    let body = html_doc.body().unwrap();
+    let Ok(html_doc) = document().dyn_into::<HtmlDocument>() else {
+        gloo_console::log!("Couldnt get HTML Document");
+        return;
+    };
+    let Some(body) = html_doc.body() else {
+        gloo_console::log!("Couldnt get HTML Body");
+        return;
+    };
     let theme2 = theme.to_lowercase().replace(' ', "");
     body.set_class_name(format!("{theme2} bg-crust text-text").as_str());
 }
