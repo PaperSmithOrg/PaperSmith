@@ -297,7 +297,7 @@ pub fn StatisticWindow(
                 >
                     <div>
                         <label for="file-select" class="block text-text font-medium mb-2">
-                            { "Select a file" }
+                            { "Select a Session" }
                         </label>
                         <select
                             ref={select_ref}
@@ -309,7 +309,7 @@ pub fn StatisticWindow(
                     </div>
                     <div class="mt-4">
                         <label class="block text-subtext font-medium mb-2">
-                            { "File Content" }
+                            { "Statistics" }
                         </label>
                         <div class="bg-mantle p-4 rounded-lg">
                             { if (*file_content).is_empty() {
