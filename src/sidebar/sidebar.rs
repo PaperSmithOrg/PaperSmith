@@ -65,8 +65,8 @@ pub fn sidebarwrapper(Props { modal }: &Props) -> Html {
                 <button
                     class="absolute right-0 w-2 bg-transparent p-0 border-y-0 border-transparent h-full cursor-pointer border-solid hover:border-x-2 hover:border-subtext"
                     title="Collapse Sidebar"
-                    onclick={toggle} /* ondblclick */
-                />
+                    onclick={toggle}
+                /* ondblclick *//>
             </div>
         }
     }
@@ -511,7 +511,7 @@ fn chapter(
         let load_modal = html! {
             <>
                 <div class="text-xl font-bold">
-                    { format!("You have unsaved changes! do you really want to continue?") }
+                    { format!("You have unsaved changes! Do you really want to continue?") }
                 </div>
                 <br />
                 <div id="footer" class="flex justify-end w-full pt-8">
