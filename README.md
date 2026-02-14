@@ -20,7 +20,7 @@ _A free and open-source writing application for authors_
 ## Main Contributors
 
 - Toll25
-- MasterRick1337
+- T-Ricstar
 - Alllpacka
 - DotDo1
 
